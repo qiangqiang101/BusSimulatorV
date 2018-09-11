@@ -73,6 +73,7 @@
   <ItemGroup>
     <Compile Include="BusRoute.vb" />
     <Compile Include="BusSim.vb" />
+    <Compile Include="BusSimTimer.vb" />
     <Compile Include="Helper.vb" />
     <Compile Include="Logger.vb" />
     <Compile Include="My Project\AssemblyInfo.vb" />

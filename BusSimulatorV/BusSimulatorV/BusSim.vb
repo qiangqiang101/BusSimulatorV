@@ -17,10 +17,10 @@ Public Class BusSim
     Public Rectangle = New UIResRectangle()
     Public config As ScriptSettings = ScriptSettings.Load("scripts\BusSimulatorV\config.ini")
     Public Earned As Integer = 0
-    Public Bus As Vehicle
+    Public Shared Bus As Vehicle
     Public IsInGame As Boolean = False
     Public PlayerOriginalPosition, PlayerOriginalRotation As Vector3
-    Public EarnedTimerBar, SpeedTimerBar, NextStationTimerBar As TextTimerBar
+    Public EarnedTimerBar, SpeedTimerBar, NextStationTimerBar, StationTimerBar As TextTimerBar
     Public CurrentStationIndex As Integer = 0
     Public BlipDict As New Dictionary(Of Integer, Blip)
     Public BlipList As New List(Of Blip)
@@ -33,7 +33,7 @@ Public Class BusSim
     Dim Speedometer As SpeedMeasurement
     Public LeftBlinker, RightBlinker As Boolean
     Public PedRelationshipGroup As Integer
-    Public PassengerPedGroup As New List(Of Ped)
+    Public Shared PassengerPedGroup As New List(Of Ped)
     Public LeavedPassengerPedGroup As New List(Of Ped)
 
     Public Sub LoadSettings()
@@ -149,8 +149,8 @@ Public Class BusSim
     End Sub
 
     Private Sub BusSim_Tick(sender As Object, e As EventArgs) Handles Me.Tick
-        Try
-            _menuPool.ProcessMenus()
+        'Try
+        _menuPool.ProcessMenus()
 
             If _menuPool.IsAnyMenuOpen Then
                 Game.DisableControlThisFrame(0, GTA.Control.MoveUpDown)
@@ -169,7 +169,7 @@ Public Class BusSim
             End If
 
             If IsInGame Then
-                UpdateTimerBars()
+                If Game.Player.Character.IsInVehicle(Bus) Then UpdateTimerBars()
 
                 Try
                     For Each ped As Ped In Bus.Passengers
@@ -183,12 +183,6 @@ Public Class BusSim
                 Catch ex As Exception
                     Logger.Log(String.Format("(Stop Ped Flee): {0} {1}", ex.Message, ex.StackTrace))
                 End Try
-
-                'For Each ped As Ped In PassengerPedGroup
-                '    If Not ped.IsInVehicle Then
-                '        ped.Task.EnterVehicle(Bus, Bus.GetEmptySeat, 5000, 2.0, EnterBusFlag.TeleportDirectly)
-                '    End If
-                'Next
 
                 If Bus.Position.DistanceTo(Game.Player.Character.Position) >= 50.0F Then 'Abandoned mission
                     Try
@@ -224,7 +218,7 @@ Public Class BusSim
                     End Try
                 End If
 
-                If Bus.Position.DistanceTo(CurrentRoute.Stations(CurrentStationIndex).StationCoords) <= 5.0F Then
+                If Bus.Position.DistanceTo(CurrentRoute.Stations(CurrentStationIndex).StationCoords) <= 7.5F Then
                     Dim b As Blip = BlipDict.Item(CurrentStationIndex)
                     BlipDict.Remove(CurrentStationIndex)
                     b.Remove()
@@ -275,24 +269,46 @@ Public Class BusSim
                             End If
                         End If
                         If Not PassengerPedGroup.Count >= 15 Then
-                            Dim ped As Ped = Game.Player.Character.Position.GetNearestNonPlayerPed(15.0F)
-                            If Not ped = Nothing Then
-                                If Not PassengerPedGroup.Contains(ped) Then
-                                    PassengerPedGroup.Add(ped)
-                                    ped.RelationshipGroup = PedRelationshipGroup
-                                    ped.StopPedFlee
-                                    Dim pedblip As Blip = ped.AddBlip
-                                    With pedblip
-                                        .Sprite = BlipSprite.Friend
-                                        .Color = BlipColor.Blue
-                                        .IsFriendly = True
-                                        .Name = "Passenger"
-                                    End With
-                                    ped.Task.ClearAll()
-                                    ped.Task.EnterVehicle(Bus, VehicleSeat.Any, 5000, 2.0F, EnterBusFlag.Normal)
-                                    Earned += CurrentRoute.RouteFare
+                            'Dim ped As Ped = Game.Player.Character.Position.GetNearestNonPlayerPed(15.0F)
+                            'If Not ped = Nothing Then
+                            '    If Not PassengerPedGroup.Contains(ped) Then
+                            '        PassengerPedGroup.Add(ped)
+                            '        ped.RelationshipGroup = PedRelationshipGroup
+                            '        ped.StopPedFlee
+                            '        Dim pedblip As Blip = ped.AddBlip
+                            '        With pedblip
+                            '            .Sprite = BlipSprite.Friend
+                            '            .Color = BlipColor.Blue
+                            '            .IsFriendly = True
+                            '            .Name = "Passenger"
+                            '        End With
+                            '        ped.Task.ClearAll()
+                            '        ped.Task.EnterVehicle(Bus, VehicleSeat.Any, 5000, 2.0F, EnterBusFlag.Normal)
+                            '        Earned += CurrentRoute.RouteFare
+                            '    End If
+                            'End If
+                            Dim pedCount As Integer = 0, maxPed As Integer = 3
+                            For Each ped As Ped In World.GetNearbyPeds(Game.Player.Character, 15.0F)
+                                If pedCount < maxPed AndAlso Not ped = Game.Player.Character AndAlso Not ped.IsInVehicle() Then
+                                    If Not PassengerPedGroup.Contains(ped) Then
+                                        ped.StopPedFlee
+                                        ped.RelationshipGroup = PedRelationshipGroup
+                                        ped.Task.ClearAll()
+                                        'ped.Task.EnterVehicle(Bus, VehicleSeat.Any, 5000, 2.0F, EnterBusFlag.Normal)
+
+                                        Dim pedblip As Blip = ped.AddBlip
+                                        With pedblip
+                                            .Sprite = BlipSprite.Friend
+                                            .Color = BlipColor.Blue
+                                            .IsFriendly = True
+                                            .Name = "Passenger"
+                                        End With
+                                        PassengerPedGroup.Add(ped)
+                                        pedCount += 1
+                                        Earned += CurrentRoute.RouteFare
+                                    End If
                                 End If
-                            End If
+                            Next
                         End If
                     End If
                 End If
@@ -320,9 +336,9 @@ Public Class BusSim
                     DisplayHelpTextThisFrame("Press ~INPUT_CONTEXT~ to work.")
                 End If
             End If
-        Catch ex As Exception
-            Logger.Log(String.Format("(BusSim_Tick): {0} {1}", ex.Message, ex.StackTrace))
-        End Try
+        'Catch ex As Exception
+        '    Logger.Log(String.Format("(BusSim_Tick): {0} {1}", ex.Message, ex.StackTrace))
+        'End Try
     End Sub
 
     Private Sub BusSim_Aborted(sender As Object, e As EventArgs) Handles Me.Aborted
@@ -332,11 +348,13 @@ Public Class BusSim
                 blip.Remove()
             Next
             ModBlip.Remove()
-            For Each ped As Ped In PassengerPedGroup
-                ped.CurrentBlip.Remove()
-                ped.RelationshipGroup = 0
-                PassengerPedGroup.Remove(ped)
-            Next
+            If Not PassengerPedGroup.Count = 0 Then
+                For Each ped As Ped In PassengerPedGroup
+                    ped.CurrentBlip.Remove()
+                    ped.RelationshipGroup = 0
+                    PassengerPedGroup.Remove(ped)
+                Next
+            End If
             If Not LeavedPassengerPedGroup.Count = 0 Then
                 For Each ped As Ped In LeavedPassengerPedGroup
                     ped.CurrentBlip.Remove()
@@ -367,32 +385,8 @@ Public Class BusSim
                     .RemoveAllExtras()
                     If .ExtraExists(CurrentRoute.TurnOnExtra) Then .ToggleExtra(CurrentRoute.TurnOnExtra, True)
                     .PlaceOnGround()
-                    'PassengerPedGroup.Add(Bus.CreateRandomPedOnSeat(VehicleSeat.Any))
-                    'PassengerPedGroup.Add(Bus.CreateRandomPedOnSeat(VehicleSeat.Any))
-                    'PassengerPedGroup.Add(Bus.CreateRandomPedOnSeat(VehicleSeat.Any))
-                    'PassengerPedGroup.Add(Bus.CreateRandomPedOnSeat(VehicleSeat.Any))
-                    'PassengerPedGroup.Add(Bus.CreateRandomPedOnSeat(VehicleSeat.Any))
-                    'Earned = CurrentRoute.RouteFare * 5
-                    Dim peds As Ped() = World.GetNearbyPeds(Game.Player.Character.Position, 40.0F)
-                    For Each ped As Ped In peds
-                        If Not ped.IsInVehicle AndAlso Not ped = Game.Player.Character Then
-                            If Not PassengerPedGroup.Contains(ped) Then
-                                ped.RelationshipGroup = PedRelationshipGroup
-                                ped.StopPedFlee
-                                Dim pedblip As Blip = ped.AddBlip
-                                With pedblip
-                                    .Sprite = BlipSprite.Friend
-                                    .Color = BlipColor.Blue
-                                    .IsFriendly = True
-                                    .Name = "Passenger"
-                                End With
-                                ped.Task.ClearAll()
-                                ped.Task.EnterVehicle(Bus, VehicleSeat.Any, 5000, 2.0F, EnterBusFlag.TeleportDirectly)
-                                Earned += CurrentRoute.RouteFare
-                            End If
-                        End If
-                    Next
                 End With
+
                 For Each station As Station In CurrentRoute.Stations
                     Dim b As Blip = World.CreateBlip(station.StationCoords)
                     With b
@@ -410,7 +404,7 @@ Public Class BusSim
                 PedRelationshipGroup = World.AddRelationshipGroup("BusPassengerGroup")
                 World.SetRelationshipBetweenGroups(Relationship.Companion, PedRelationshipGroup, Game.Player.Character.RelationshipGroup)
                 World.SetRelationshipBetweenGroups(Relationship.Companion, Game.Player.Character.RelationshipGroup, PedRelationshipGroup)
-                Game.Player.Character.SetAsLeader()
+                'Game.Player.Character.SetAsLeader()
                 IsInGame = True
             End If
         Catch ex As Exception
@@ -428,8 +422,10 @@ Public Class BusSim
                     SpeedTimerBar = New TextTimerBar("SPEED MPH", Bus.SpeedMPH.ToString("0"))
             End Select
             NextStationTimerBar = New TextTimerBar("NEXT STATION", CurrentRoute.Stations(CurrentStationIndex).StationName)
+            StationTimerBar = New TextTimerBar("STATION", $"{CurrentStationIndex}/{CurrentRoute.Stations.Count}")
             _timerPool.Add(EarnedTimerBar)
             _timerPool.Add(SpeedTimerBar)
+            _timerPool.Add(StationTimerBar)
             _timerPool.Add(NextStationTimerBar)
             _timerPool.Draw()
         Catch ex As Exception
@@ -442,6 +438,7 @@ Public Class BusSim
             _timerPool.Remove(EarnedTimerBar)
             _timerPool.Remove(SpeedTimerBar)
             _timerPool.Remove(NextStationTimerBar)
+            _timerPool.Remove(StationTimerBar)
             EarnedTimerBar = New TextTimerBar("EARNED", "$" & Earned.ToString("0"))
             Select Case Speedometer
                 Case SpeedMeasurement.KPH
@@ -450,8 +447,10 @@ Public Class BusSim
                     SpeedTimerBar = New TextTimerBar("SPEED MPH", Bus.SpeedMPH.ToString("0"))
             End Select
             NextStationTimerBar = New TextTimerBar("NEXT STATION", CurrentRoute.Stations(CurrentStationIndex).StationName)
+            StationTimerBar = New TextTimerBar("STATION", $"{CurrentStationIndex}/{CurrentRoute.Stations.Count}")
             _timerPool.Add(EarnedTimerBar)
             _timerPool.Add(SpeedTimerBar)
+            _timerPool.Add(StationTimerBar)
             _timerPool.Add(NextStationTimerBar)
             _timerPool.Draw()
         Catch ex As Exception
@@ -462,6 +461,7 @@ Public Class BusSim
     Public Sub RemoveTimerBars()
         _timerPool.Remove(EarnedTimerBar)
         _timerPool.Remove(SpeedTimerBar)
+        _timerPool.Remove(StationTimerBar)
         _timerPool.Remove(NextStationTimerBar)
     End Sub
 

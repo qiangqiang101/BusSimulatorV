@@ -21,7 +21,7 @@ Public Class BusSim
     Public IsInGame As Boolean = False
     Public PlayerOriginalPosition, PlayerOriginalRotation As Vector3
     Public EarnedTimerBar, SpeedTimerBar, NextStationTimerBar As TextTimerBar
-    Public CurrentStationIndex As Integer
+    Public CurrentStationIndex As Integer = 0
     Public BlipDict As New Dictionary(Of Integer, Blip)
     Public BlipList As New List(Of Blip)
     Public ModBlip As Blip
@@ -32,6 +32,9 @@ Public Class BusSim
     Public FrontDoorKey2, RearDoorKey2, LeftBlinkerKey2, RightBlinkerKey2 As Keys
     Dim Speedometer As SpeedMeasurement
     Public LeftBlinker, RightBlinker As Boolean
+    Public PedRelationshipGroup As Integer
+    Public PassengerPedGroup As New List(Of Ped)
+    Public LeavedPassengerPedGroup As New List(Of Ped)
 
     Public Sub LoadSettings()
         Try
@@ -168,26 +171,57 @@ Public Class BusSim
             If IsInGame Then
                 UpdateTimerBars()
 
-                If Bus.Position.DistanceTo(Game.Player.Character.Position) >= 50.0F Then
-                    For Each blip As Blip In BlipList
-                        blip.Remove()
-                    Next
-                    CurrentStationIndex = 0
-                    For Each ped As Ped In Game.Player.Character.CurrentPedGroup
-                        If Not ped = Game.Player.Character Then
-                            ped.LeaveGroup()
-                            Game.Player.Character.CurrentPedGroup.Remove(ped)
-                            ped.Task.LeaveVehicle(Bus, False)
+                Try
+                    For Each ped As Ped In Bus.Passengers
+                        If Not LeavedPassengerPedGroup.Contains(ped) Then
+                            ped.StopPedFlee
+                            ped.Task.LookAt(Game.Player.Character)
+                            ped.RelationshipGroup = PedRelationshipGroup
+                            ped.CurrentBlip.Alpha = 0
                         End If
                     Next
-                    IsInGame = False
-                    BlipDict.Clear()
-                    BlipList.Clear()
-                    itemPlay.Text = "Start Mission"
-                    itemPlay.Enabled = True
-                    RemoveTimerBars()
-                    BigMessageThread.MessageInstance.ShowMissionPassedMessage("Mission Failed")
-                    UI.ShowSubtitle("You abandoned your bus.")
+                Catch ex As Exception
+                    Logger.Log(String.Format("(Stop Ped Flee): {0} {1}", ex.Message, ex.StackTrace))
+                End Try
+
+                'For Each ped As Ped In PassengerPedGroup
+                '    If Not ped.IsInVehicle Then
+                '        ped.Task.EnterVehicle(Bus, Bus.GetEmptySeat, 5000, 2.0, EnterBusFlag.TeleportDirectly)
+                '    End If
+                'Next
+
+                If Bus.Position.DistanceTo(Game.Player.Character.Position) >= 50.0F Then 'Abandoned mission
+                    Try
+                        For Each blip As Blip In BlipList
+                            blip.Remove()
+                        Next
+                        CurrentStationIndex = 0
+                        For Each ped As Ped In PassengerPedGroup
+                            LeavedPassengerPedGroup.Add(ped)
+                            ped.Task.ClearAll()
+                            PassengerPedGroup.Remove(ped)
+                        Next
+                        If Not LeavedPassengerPedGroup.Count = 0 Then
+                            For Each ped As Ped In LeavedPassengerPedGroup
+                                ped.CurrentBlip.Remove()
+                                ped.Task.LeaveVehicle(Bus, LeaveVehicleFlags.LeaveDoorOpen)
+                                ped.RelationshipGroup = 0
+                            Next
+                        End If
+                        PassengerPedGroup.Clear()
+                        LeavedPassengerPedGroup.Clear()
+
+                        IsInGame = False
+                        BlipDict.Clear()
+                        BlipList.Clear()
+                        itemPlay.Text = "Start Mission"
+                        itemPlay.Enabled = True
+                        RemoveTimerBars()
+                        BigMessageThread.MessageInstance.ShowMissionPassedMessage("Mission Failed")
+                        UI.ShowSubtitle("You abandoned your bus.")
+                    Catch ex As Exception
+                        Logger.Log(String.Format("(Abandoned Bus): {0} {1}", ex.Message, ex.StackTrace))
+                    End Try
                 End If
 
                 If Bus.Position.DistanceTo(CurrentRoute.Stations(CurrentStationIndex).StationCoords) <= 5.0F Then
@@ -195,14 +229,23 @@ Public Class BusSim
                     BlipDict.Remove(CurrentStationIndex)
                     b.Remove()
                     CurrentStationIndex += 1
+
                     If CurrentStationIndex = (CurrentRoute.Stations.Count) Then
-                        For Each ped As Ped In Game.Player.Character.CurrentPedGroup
-                            If Not ped = Game.Player.Character Then
-                                ped.LeaveGroup()
-                                Game.Player.Character.CurrentPedGroup.Remove(ped)
-                                ped.Task.LeaveVehicle(Bus, False)
-                            End If
+                        For Each ped As Ped In PassengerPedGroup
+                            LeavedPassengerPedGroup.Add(ped)
+                            ped.Task.ClearAll()
+                            PassengerPedGroup.Remove(ped)
                         Next
+                        If Not LeavedPassengerPedGroup.Count = 0 Then
+                            For Each ped As Ped In LeavedPassengerPedGroup
+                                ped.CurrentBlip.Remove()
+                                ped.Task.LeaveVehicle(Bus, LeaveVehicleFlags.LeaveDoorOpen)
+                                ped.RelationshipGroup = 0
+                            Next
+                        End If
+                        PassengerPedGroup.Clear()
+                        LeavedPassengerPedGroup.Clear()
+
                         IsInGame = False
                         BlipDict.Clear()
                         BlipList.Clear()
@@ -216,58 +259,59 @@ Public Class BusSim
                     Else
                         b = BlipDict.Item(CurrentStationIndex)
                         b.ShowRoute = True
-                        If Not Game.Player.Character.CurrentPedGroup.Count = 0 Then
-                            Dim ped As Ped = Game.Player.Character.CurrentPedGroup.GetMember(New Random().Next(0, Game.Player.Character.CurrentPedGroup.Count))
-                            If Not ped = Game.Player.Character Then
-                                ped.CurrentBlip.Remove()
-                                ped.Task.LeaveVehicle(Bus, False)
-                                ped.LeaveGroup()
-                                Game.Player.Character.CurrentPedGroup.Remove(ped)
+                        If Not PassengerPedGroup.Count = 0 Then
+                            If Not Bus.Position.DistanceTo(CurrentRoute.Stations(0).StationCoords) <= 5.0F Then
+                                Dim ped As Ped = PassengerPedGroup(New Random().Next(0, PassengerPedGroup.Count))
+                                LeavedPassengerPedGroup.Add(ped)
+                                ped.Task.ClearAll()
+                                PassengerPedGroup.Remove(ped)
                             End If
-                        End If
-                        If Not Game.Player.Character.CurrentPedGroup.Count = 0 Then
-                            Dim ped As Ped = Game.Player.Character.CurrentPedGroup.GetMember(New Random().Next(0, Game.Player.Character.CurrentPedGroup.Count))
-                            If Not ped = Game.Player.Character Then
-                                ped.CurrentBlip.Remove()
-                                ped.Task.LeaveVehicle(Bus, False)
-                                ped.LeaveGroup()
-                                Game.Player.Character.CurrentPedGroup.Remove(ped)
-                            End If
-                        End If
-                        If Not Game.Player.Character.CurrentPedGroup.Count = 7 Then
-                            Dim Peds As Ped() = World.GetNearbyPeds(Game.Player.Character, 10.0)
-                            Dim MaxRider As Integer = New Random().Next(0, Peds.Count + 1), Rider As Integer = 0
-                            If Not Rider = MaxRider Then
-                                For Each ped As Ped In Peds
-                                    If Not ped.IsInVehicle Then
-                                        Game.Player.Character.CurrentPedGroup.Add(ped, False)
-                                        ped.Task.FightAgainstHatedTargets(5000, 0)
-                                        ped.AlwaysKeepTask = True
-                                        ped.AddBlip()
-                                        Earned += CurrentRoute.RouteFare
-                                        Rider += 1
-                                    End If
+                            If Not LeavedPassengerPedGroup.Count = 0 Then
+                                For Each ped As Ped In LeavedPassengerPedGroup
+                                    ped.CurrentBlip.Remove()
+                                    ped.Task.LeaveVehicle(Bus, LeaveVehicleFlags.LeaveDoorOpen)
+                                    ped.RelationshipGroup = 0
                                 Next
                             End If
                         End If
+                        If Not PassengerPedGroup.Count >= 15 Then
+                            Dim ped As Ped = Game.Player.Character.Position.GetNearestNonPlayerPed(15.0F)
+                            If Not ped = Nothing Then
+                                If Not PassengerPedGroup.Contains(ped) Then
+                                    PassengerPedGroup.Add(ped)
+                                    ped.RelationshipGroup = PedRelationshipGroup
+                                    ped.StopPedFlee
+                                    Dim pedblip As Blip = ped.AddBlip
+                                    With pedblip
+                                        .Sprite = BlipSprite.Friend
+                                        .Color = BlipColor.Blue
+                                        .IsFriendly = True
+                                        .Name = "Passenger"
+                                    End With
+                                    ped.Task.ClearAll()
+                                    ped.Task.EnterVehicle(Bus, VehicleSeat.Any, 5000, 2.0F, EnterBusFlag.Normal)
+                                    Earned += CurrentRoute.RouteFare
+                                End If
+                            End If
+                        End If
                     End If
-                    End If
-
-                    If Game.IsControlJustReleased(0, FrontDoorKey) AndAlso Game.Player.Character.IsInVehicle(Bus) Then
-                        If Bus.IsDoorOpen(VehicleDoor.FrontLeftDoor) Then Bus.CloseDoor(VehicleDoor.FrontLeftDoor, False) Else Bus.OpenDoor(VehicleDoor.FrontLeftDoor, False, False)
-                        If Bus.IsDoorOpen(VehicleDoor.FrontRightDoor) Then Bus.CloseDoor(VehicleDoor.FrontRightDoor, False) Else Bus.OpenDoor(VehicleDoor.FrontRightDoor, False, False)
-                    End If
-                    If Game.IsControlJustReleased(0, RearDoorKey) AndAlso Game.Player.Character.IsInVehicle(Bus) Then
-                        If Bus.IsDoorOpen(VehicleDoor.BackLeftDoor) Then Bus.CloseDoor(VehicleDoor.BackLeftDoor, False) Else Bus.OpenDoor(VehicleDoor.BackLeftDoor, False, False)
-                        If Bus.IsDoorOpen(VehicleDoor.BackRightDoor) Then Bus.CloseDoor(VehicleDoor.BackRightDoor, False) Else Bus.OpenDoor(VehicleDoor.BackRightDoor, False, False)
-                    End If
-                    Bus.LeftIndicatorLightOn = LeftBlinker
-                    Bus.RightIndicatorLightOn = RightBlinker
-                    If Game.IsControlJustReleased(0, LeftBlinkerKey) AndAlso Game.Player.Character.IsInVehicle(Bus) Then LeftBlinker = Not LeftBlinker
-                    If Game.IsControlJustReleased(0, RightBlinkerKey) AndAlso Game.Player.Character.IsInVehicle(Bus) Then RightBlinker = Not RightBlinker
                 End If
 
-                If Game.Player.Character.Position.DistanceTo2D(MenuActivator) <= 3.0 AndAlso Not Game.Player.Character.IsInVehicle Then
+                If Game.IsControlJustReleased(0, FrontDoorKey) AndAlso Game.Player.Character.IsInVehicle(Bus) Then
+                    If Bus.IsDoorOpen(VehicleDoor.FrontLeftDoor) Then Bus.CloseDoor(VehicleDoor.FrontLeftDoor, False) Else Bus.OpenDoor(VehicleDoor.FrontLeftDoor, False, False)
+                    If Bus.IsDoorOpen(VehicleDoor.FrontRightDoor) Then Bus.CloseDoor(VehicleDoor.FrontRightDoor, False) Else Bus.OpenDoor(VehicleDoor.FrontRightDoor, False, False)
+                End If
+                If Game.IsControlJustReleased(0, RearDoorKey) AndAlso Game.Player.Character.IsInVehicle(Bus) Then
+                    If Bus.IsDoorOpen(VehicleDoor.BackLeftDoor) Then Bus.CloseDoor(VehicleDoor.BackLeftDoor, False) Else Bus.OpenDoor(VehicleDoor.BackLeftDoor, False, False)
+                    If Bus.IsDoorOpen(VehicleDoor.BackRightDoor) Then Bus.CloseDoor(VehicleDoor.BackRightDoor, False) Else Bus.OpenDoor(VehicleDoor.BackRightDoor, False, False)
+                End If
+                Bus.LeftIndicatorLightOn = LeftBlinker
+                Bus.RightIndicatorLightOn = RightBlinker
+                If Game.IsControlJustReleased(0, LeftBlinkerKey) AndAlso Game.Player.Character.IsInVehicle(Bus) Then LeftBlinker = Not LeftBlinker
+                If Game.IsControlJustReleased(0, RightBlinkerKey) AndAlso Game.Player.Character.IsInVehicle(Bus) Then RightBlinker = Not RightBlinker
+            End If
+
+            If Game.Player.Character.Position.DistanceTo2D(MenuActivator) <= 3.0 AndAlso Not Game.Player.Character.IsInVehicle Then
                 If Game.IsControlJustReleased(0, GTA.Control.Context) Then
                     MainMenu.Show()
                     MenuCamera = World.CreateCamera(CameraPos, CameraRot, GameplayCamera.FieldOfView)
@@ -288,10 +332,20 @@ Public Class BusSim
                 blip.Remove()
             Next
             ModBlip.Remove()
-            For Each ped As Ped In Game.Player.Character.CurrentPedGroup
+            For Each ped As Ped In PassengerPedGroup
                 ped.CurrentBlip.Remove()
-                Game.Player.Character.CurrentPedGroup.Remove(ped)
+                ped.RelationshipGroup = 0
+                PassengerPedGroup.Remove(ped)
             Next
+            If Not LeavedPassengerPedGroup.Count = 0 Then
+                For Each ped As Ped In LeavedPassengerPedGroup
+                    ped.CurrentBlip.Remove()
+                    ped.RelationshipGroup = 0
+                    LeavedPassengerPedGroup.Remove(ped)
+                Next
+            End If
+            PassengerPedGroup.Clear()
+            LeavedPassengerPedGroup.Clear()
         Catch ex As Exception
             Logger.Log(String.Format("(BusSim_Aborted): {0} {1}", ex.Message, ex.StackTrace))
         End Try
@@ -313,6 +367,31 @@ Public Class BusSim
                     .RemoveAllExtras()
                     If .ExtraExists(CurrentRoute.TurnOnExtra) Then .ToggleExtra(CurrentRoute.TurnOnExtra, True)
                     .PlaceOnGround()
+                    'PassengerPedGroup.Add(Bus.CreateRandomPedOnSeat(VehicleSeat.Any))
+                    'PassengerPedGroup.Add(Bus.CreateRandomPedOnSeat(VehicleSeat.Any))
+                    'PassengerPedGroup.Add(Bus.CreateRandomPedOnSeat(VehicleSeat.Any))
+                    'PassengerPedGroup.Add(Bus.CreateRandomPedOnSeat(VehicleSeat.Any))
+                    'PassengerPedGroup.Add(Bus.CreateRandomPedOnSeat(VehicleSeat.Any))
+                    'Earned = CurrentRoute.RouteFare * 5
+                    Dim peds As Ped() = World.GetNearbyPeds(Game.Player.Character.Position, 40.0F)
+                    For Each ped As Ped In peds
+                        If Not ped.IsInVehicle AndAlso Not ped = Game.Player.Character Then
+                            If Not PassengerPedGroup.Contains(ped) Then
+                                ped.RelationshipGroup = PedRelationshipGroup
+                                ped.StopPedFlee
+                                Dim pedblip As Blip = ped.AddBlip
+                                With pedblip
+                                    .Sprite = BlipSprite.Friend
+                                    .Color = BlipColor.Blue
+                                    .IsFriendly = True
+                                    .Name = "Passenger"
+                                End With
+                                ped.Task.ClearAll()
+                                ped.Task.EnterVehicle(Bus, VehicleSeat.Any, 5000, 2.0F, EnterBusFlag.TeleportDirectly)
+                                Earned += CurrentRoute.RouteFare
+                            End If
+                        End If
+                    Next
                 End With
                 For Each station As Station In CurrentRoute.Stations
                     Dim b As Blip = World.CreateBlip(station.StationCoords)
@@ -328,6 +407,9 @@ Public Class BusSim
                 DrawtimerBars()
                 selectedItem.Text = "Stop Mission"
                 selectedItem.Enabled = False
+                PedRelationshipGroup = World.AddRelationshipGroup("BusPassengerGroup")
+                World.SetRelationshipBetweenGroups(Relationship.Companion, PedRelationshipGroup, Game.Player.Character.RelationshipGroup)
+                World.SetRelationshipBetweenGroups(Relationship.Companion, Game.Player.Character.RelationshipGroup, PedRelationshipGroup)
                 Game.Player.Character.SetAsLeader()
                 IsInGame = True
             End If

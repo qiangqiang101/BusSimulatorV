@@ -2,6 +2,7 @@
 Imports System.Runtime.CompilerServices
 Imports GTA.Native
 Imports INMNativeUI
+Imports GTA.Math
 
 Module Helper
 
@@ -96,17 +97,54 @@ Module Helper
         KPH
     End Enum
 
+    Public Enum EnterBusFlag
+        Normal = 1
+        Teleport = 3
+        TeleportDirectly = 16
+    End Enum
+
+    Public Enum LeaveBusFlag
+        Normal
+        Normal2nd
+        Teleport = 16
+        SlowerNormal = 64
+        LeaveDoorsOpen = 256
+        Unk1 = 320
+        Unk2 = 512
+        ThrowingOut = 4160
+        Unk3 = 131072
+        MovesToPassengerSeatFirst = 262144
+    End Enum
+
     <Extension()>
     Public Sub SetAsLeader(ByVal player As Ped)
-        Native.Function.Call(Hash.SET_PED_AS_GROUP_LEADER, player, player.CurrentPedGroup)
+        Native.Function.Call(Hash.SET_PED_AS_GROUP_LEADER, player.Handle, player.CurrentPedGroup)
     End Sub
 
     <Extension()>
     Public Sub EnterGroup(ByVal ped As Ped, group As PedGroup, Optional neverLeavesGroup As Boolean = True)
         Game.Player.Character.SetAsLeader()
-        Native.Function.Call(Hash.SET_PED_AS_GROUP_MEMBER, ped, group)
+        Native.Function.Call(Hash.SET_PED_AS_GROUP_MEMBER, ped.Handle, group)
         ped.NeverLeavesGroup = neverLeavesGroup
         Game.Player.Character.SetAsLeader()
     End Sub
 
+    <Extension()>
+    Public Sub StopPedFlee(ByVal ped As Ped)
+        Native.Function.Call(Hash.TASK_SET_BLOCKING_OF_NON_TEMPORARY_EVENTS, ped, True)
+        Native.Function.Call(Hash.SET_PED_FLEE_ATTRIBUTES, ped, 0, 0)
+        Native.Function.Call(Hash.SET_PED_COMBAT_ATTRIBUTES, ped, 17, 1)
+    End Sub
+
+    <Extension()>
+    Public Function GetNearestNonPlayerPed(ByVal coords As Vector3, radius As Single) As Ped
+        Dim peds As Ped() = World.GetNearbyPeds(Game.Player.Character.Position, radius)
+        For Each ped As Ped In peds
+            If Not ped.IsInVehicle AndAlso Not ped = Game.Player.Character Then
+                Return ped
+                Exit Function
+            End If
+        Next
+        Return Nothing
+    End Function
 End Module

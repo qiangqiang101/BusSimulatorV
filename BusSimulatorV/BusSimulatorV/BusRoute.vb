@@ -12,6 +12,7 @@ Public Structure BusRoute
         End Get
     End Property
 
+    <XmlIgnore>
     Public Property RouteFileName() As String
 
     Public RouteName As String

@@ -15,8 +15,8 @@ Public Class BusSimTimer
         For Each ped As Ped In PassengerPedGroup
             If Not ped.IsInVehicle(Bus) Then
                 ped.Task.ClearAll()
-                ped.Task.EnterVehicle(Bus, VehicleSeat.Any, 5000, 2.0, EnterBusFlag.Normal)
-                Script.Wait(2000)
+                ped.Task.EnterVehicle(Bus, Bus.GetEmptySeat, 10000, 2.0, EnterBusFlag.Normal)
+                Script.Wait(1000)
             End If
         Next
     End Sub

@@ -14,6 +14,12 @@ Public Structure BusRoute
 
     <XmlIgnore>
     Public Property RouteFileName() As String
+    <XmlIgnore>
+    Public ReadOnly Property TotalStation() As Integer
+        Get
+            Return Stations.Count
+        End Get
+    End Property
 
     Public RouteName As String
     Public RouteNumber As Integer

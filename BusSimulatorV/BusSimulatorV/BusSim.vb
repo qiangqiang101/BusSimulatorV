@@ -34,7 +34,8 @@ Public Class BusSim
     Public LeftBlinker, RightBlinker As Boolean
     Public PedRelationshipGroup As Integer
     Public Shared PassengerPedGroup As New List(Of Ped)
-    Public LeavedPassengerPedGroup As New List(Of Ped)
+    Public Shared LeavedPassengerPedGroup As New List(Of Ped)
+    Public Shared LastStationPassengerPedGroup As New List(Of Ped)
 
     Public Sub LoadSettings()
         Try
@@ -170,7 +171,7 @@ Public Class BusSim
         End If
 
         If IsInGame Then
-            If Game.Player.Character.IsInVehicle(Bus) Then UpdateTimerBars() : DrawMarker(CurrentRoute.Stations(CurrentStationIndex).StationCoords)
+            If Game.Player.Character.IsInVehicle(Bus) Then UpdateTimerBars() : DrawMarker(CurrentRoute.Stations(CurrentStationIndex).StationCoords) ': UI.ShowSubtitle(Bus.GetEmptySeatString)
 
             Try
                 For Each ped As Ped In Bus.Passengers
@@ -196,13 +197,17 @@ Public Class BusSim
                         ped.Task.ClearAll()
                         PassengerPedGroup.Remove(ped)
                     Next
-                    If Not LeavedPassengerPedGroup.Count = 0 Then
-                        For Each ped As Ped In LeavedPassengerPedGroup
-                            ped.CurrentBlip.Remove()
-                            ped.Task.LeaveVehicle(Bus, LeaveVehicleFlags.LeaveDoorOpen)
-                            ped.RelationshipGroup = 0
-                        Next
-                    End If
+                    'If Not LeavedPassengerPedGroup.Count = 0 Then
+                    '    For Each ped As Ped In LeavedPassengerPedGroup
+                    '        ped.CurrentBlip.Remove()
+                    '        Select Case ped.SeatIndex
+                    '            Case VehicleSeat.ExtraSeat1, VehicleSeat.ExtraSeat2, VehicleSeat.ExtraSeat3, VehicleSeat.ExtraSeat4, VehicleSeat.ExtraSeat5, VehicleSeat.ExtraSeat6, VehicleSeat.ExtraSeat7, VehicleSeat.ExtraSeat8, VehicleSeat.ExtraSeat9, VehicleSeat.ExtraSeat10, VehicleSeat.ExtraSeat11, VehicleSeat.ExtraSeat12
+                    '                ped.Task.WarpIntoVehicle(Bus, VehicleSeat.Passenger)
+                    '        End Select
+                    '        ped.Task.LeaveVehicle(Bus, LeaveVehicleFlags.LeaveDoorOpen)
+                    '        ped.RelationshipGroup = 0
+                    '    Next
+                    'End If
                     PassengerPedGroup.Clear()
                     LeavedPassengerPedGroup.Clear()
 
@@ -228,10 +233,15 @@ Public Class BusSim
                 If CurrentStationIndex = CurrentRoute.TotalStation Then
                     For Each ped As Ped In Bus.Passengers
                         If Not ped = Game.Player.Character Then
-                            ped.CurrentBlip.Remove()
-                            ped.RelationshipGroup = 0
-                            ped.Task.ClearAll()
-                            ped.Task.LeaveVehicle(Bus, LeaveVehicleFlags.LeaveDoorOpen)
+                            'ped.CurrentBlip.Remove()
+                            'ped.RelationshipGroup = 0
+                            'ped.Task.ClearAll()
+                            'Select Case ped.SeatIndex
+                            '    Case VehicleSeat.ExtraSeat1, VehicleSeat.ExtraSeat2, VehicleSeat.ExtraSeat3, VehicleSeat.ExtraSeat4, VehicleSeat.ExtraSeat5, VehicleSeat.ExtraSeat6, VehicleSeat.ExtraSeat7, VehicleSeat.ExtraSeat8, VehicleSeat.ExtraSeat9, VehicleSeat.ExtraSeat10, VehicleSeat.ExtraSeat11, VehicleSeat.ExtraSeat12
+                            '        ped.Task.WarpIntoVehicle(Bus, VehicleSeat.Passenger)
+                            'End Select
+                            'ped.Task.LeaveVehicle(Bus, LeaveVehicleFlags.LeaveDoorOpen)
+                            LastStationPassengerPedGroup.Add(ped)
                         End If
                     Next
                     PassengerPedGroup.Clear()
@@ -257,33 +267,19 @@ Public Class BusSim
                             ped.Task.ClearAll()
                             PassengerPedGroup.Remove(ped)
                         End If
-                        If Not LeavedPassengerPedGroup.Count = 0 Then
-                            For Each ped As Ped In LeavedPassengerPedGroup
-                                ped.CurrentBlip.Remove()
-                                ped.Task.LeaveVehicle(Bus, LeaveVehicleFlags.LeaveDoorOpen)
-                                ped.RelationshipGroup = 0
-                            Next
-                        End If
+                        'If Not LeavedPassengerPedGroup.Count = 0 Then
+                        '    For Each ped As Ped In LeavedPassengerPedGroup
+                        '        ped.CurrentBlip.Remove()
+                        '        Select Case ped.SeatIndex
+                        '            Case VehicleSeat.ExtraSeat1, VehicleSeat.ExtraSeat2, VehicleSeat.ExtraSeat3, VehicleSeat.ExtraSeat4, VehicleSeat.ExtraSeat5, VehicleSeat.ExtraSeat6, VehicleSeat.ExtraSeat7, VehicleSeat.ExtraSeat8, VehicleSeat.ExtraSeat9, VehicleSeat.ExtraSeat10, VehicleSeat.ExtraSeat11, VehicleSeat.ExtraSeat12
+                        '                ped.Task.WarpIntoVehicle(Bus, VehicleSeat.Passenger)
+                        '        End Select
+                        '        ped.Task.LeaveVehicle(Bus, LeaveVehicleFlags.LeaveDoorOpen)
+                        '        ped.RelationshipGroup = 0
+                        '    Next
+                        'End If
                     End If
                     If Not PassengerPedGroup.Count >= 15 Then
-                        'Dim ped As Ped = Game.Player.Character.Position.GetNearestNonPlayerPed(15.0F)
-                        'If Not ped = Nothing Then
-                        '    If Not PassengerPedGroup.Contains(ped) Then
-                        '        PassengerPedGroup.Add(ped)
-                        '        ped.RelationshipGroup = PedRelationshipGroup
-                        '        ped.StopPedFlee
-                        '        Dim pedblip As Blip = ped.AddBlip
-                        '        With pedblip
-                        '            .Sprite = BlipSprite.Friend
-                        '            .Color = BlipColor.Blue
-                        '            .IsFriendly = True
-                        '            .Name = "Passenger"
-                        '        End With
-                        '        ped.Task.ClearAll()
-                        '        ped.Task.EnterVehicle(Bus, VehicleSeat.Any, 5000, 2.0F, EnterBusFlag.Normal)
-                        '        Earned += CurrentRoute.RouteFare
-                        '    End If
-                        'End If
                         Dim pedCount As Integer = 0, maxPed As Integer = 3
                         For Each ped As Ped In World.GetNearbyPeds(Game.Player.Character, 15.0F)
                             If pedCount < maxPed AndAlso Not ped = Game.Player.Character AndAlso Not ped.IsInVehicle() Then
@@ -291,7 +287,6 @@ Public Class BusSim
                                     ped.StopPedFlee
                                     ped.RelationshipGroup = PedRelationshipGroup
                                     ped.Task.ClearAll()
-                                    'ped.Task.EnterVehicle(Bus, VehicleSeat.Any, 5000, 2.0F, EnterBusFlag.Normal)
 
                                     Dim pedblip As Blip = ped.AddBlip
                                     With pedblip
@@ -311,12 +306,12 @@ Public Class BusSim
             End If
 
             If Game.IsControlJustReleased(0, FrontDoorKey) AndAlso Game.Player.Character.IsInVehicle(Bus) Then
-                If Bus.IsDoorOpen(VehicleDoor.FrontLeftDoor) Then Bus.CloseDoor(VehicleDoor.FrontLeftDoor, False) Else Bus.OpenDoor(VehicleDoor.FrontLeftDoor, False, False)
-                If Bus.IsDoorOpen(VehicleDoor.FrontRightDoor) Then Bus.CloseDoor(VehicleDoor.FrontRightDoor, False) Else Bus.OpenDoor(VehicleDoor.FrontRightDoor, False, False)
+                If Bus.IsDoorOpen(VehicleDoor.FrontLeftDoor) Then Bus.CloseDoor(VehicleDoor.FrontLeftDoor, False) Else Bus.OpenDoor(VehicleDoor.FrontLeftDoor, True, False)
+                If Bus.IsDoorOpen(VehicleDoor.FrontRightDoor) Then Bus.CloseDoor(VehicleDoor.FrontRightDoor, False) Else Bus.OpenDoor(VehicleDoor.FrontRightDoor, True, False)
             End If
             If Game.IsControlJustReleased(0, RearDoorKey) AndAlso Game.Player.Character.IsInVehicle(Bus) Then
-                If Bus.IsDoorOpen(VehicleDoor.BackLeftDoor) Then Bus.CloseDoor(VehicleDoor.BackLeftDoor, False) Else Bus.OpenDoor(VehicleDoor.BackLeftDoor, False, False)
-                If Bus.IsDoorOpen(VehicleDoor.BackRightDoor) Then Bus.CloseDoor(VehicleDoor.BackRightDoor, False) Else Bus.OpenDoor(VehicleDoor.BackRightDoor, False, False)
+                If Bus.IsDoorOpen(VehicleDoor.BackLeftDoor) Then Bus.CloseDoor(VehicleDoor.BackLeftDoor, False) Else Bus.OpenDoor(VehicleDoor.BackLeftDoor, True, False)
+                If Bus.IsDoorOpen(VehicleDoor.BackRightDoor) Then Bus.CloseDoor(VehicleDoor.BackRightDoor, False) Else Bus.OpenDoor(VehicleDoor.BackRightDoor, True, False)
             End If
             Bus.LeftIndicatorLightOn = LeftBlinker
             Bus.RightIndicatorLightOn = RightBlinker
@@ -325,14 +320,14 @@ Public Class BusSim
         End If
 
         If Game.Player.Character.Position.DistanceTo2D(MenuActivator) <= 3.0 AndAlso Not Game.Player.Character.IsInVehicle Then
-                If Game.IsControlJustReleased(0, GTA.Control.Context) Then
-                    MainMenu.Show()
-                    MenuCamera = World.CreateCamera(CameraPos, CameraRot, GameplayCamera.FieldOfView)
-                    World.RenderingCamera = MenuCamera
-                Else
-                    DisplayHelpTextThisFrame("Press ~INPUT_CONTEXT~ to work.")
-                End If
+            If Game.IsControlJustReleased(0, GTA.Control.Context) Then
+                MainMenu.Show()
+                MenuCamera = World.CreateCamera(CameraPos, CameraRot, GameplayCamera.FieldOfView)
+                World.RenderingCamera = MenuCamera
+            Else
+                DisplayHelpTextThisFrame("Press ~INPUT_CONTEXT~ to work as Bus Driver.")
             End If
+        End If
         'Catch ex As Exception
         '    Logger.Log(String.Format("(BusSim_Tick): {0} {1}", ex.Message, ex.StackTrace))
         'End Try
@@ -377,6 +372,7 @@ Public Class BusSim
                 Bus = World.CreateVehicle(CurrentRoute.BusModel, CurrentRoute.BusSpawnPoint, CurrentRoute.BusHeading)
                 With Bus
                     .IsPersistent = True
+                    '.SetVehiclePassengerCount(16)
                     .RemoveAllExtras()
                     If .ExtraExists(CurrentRoute.TurnOnExtra) Then .ToggleExtra(CurrentRoute.TurnOnExtra, True)
                     .PlaceOnGround()
@@ -479,12 +475,12 @@ Public Class BusSim
     Private Sub BusSim_KeyUp(sender As Object, e As KeyEventArgs) Handles Me.KeyUp
         If IsInGame Then
             If e.KeyCode = FrontDoorKey2 AndAlso Game.Player.Character.IsInVehicle(Bus) Then
-                If Bus.IsDoorOpen(VehicleDoor.FrontLeftDoor) Then Bus.CloseDoor(VehicleDoor.FrontLeftDoor, False) Else Bus.OpenDoor(VehicleDoor.FrontLeftDoor, False, False)
-                If Bus.IsDoorOpen(VehicleDoor.FrontRightDoor) Then Bus.CloseDoor(VehicleDoor.FrontRightDoor, False) Else Bus.OpenDoor(VehicleDoor.FrontRightDoor, False, False)
+                If Bus.IsDoorOpen(VehicleDoor.FrontLeftDoor) Then Bus.CloseDoor(VehicleDoor.FrontLeftDoor, False) Else Bus.OpenDoor(VehicleDoor.FrontLeftDoor, True, False)
+                If Bus.IsDoorOpen(VehicleDoor.FrontRightDoor) Then Bus.CloseDoor(VehicleDoor.FrontRightDoor, False) Else Bus.OpenDoor(VehicleDoor.FrontRightDoor, True, False)
             End If
             If e.KeyCode = RearDoorKey2 AndAlso Game.Player.Character.IsInVehicle(Bus) Then
-                If Bus.IsDoorOpen(VehicleDoor.BackLeftDoor) Then Bus.CloseDoor(VehicleDoor.BackLeftDoor, False) Else Bus.OpenDoor(VehicleDoor.BackLeftDoor, False, False)
-                If Bus.IsDoorOpen(VehicleDoor.BackRightDoor) Then Bus.CloseDoor(VehicleDoor.BackRightDoor, False) Else Bus.OpenDoor(VehicleDoor.BackRightDoor, False, False)
+                If Bus.IsDoorOpen(VehicleDoor.BackLeftDoor) Then Bus.CloseDoor(VehicleDoor.BackLeftDoor, False) Else Bus.OpenDoor(VehicleDoor.BackLeftDoor, True, False)
+                If Bus.IsDoorOpen(VehicleDoor.BackRightDoor) Then Bus.CloseDoor(VehicleDoor.BackRightDoor, False) Else Bus.OpenDoor(VehicleDoor.BackRightDoor, True, False)
             End If
             If e.KeyCode = LeftBlinkerKey2 Then LeftBlinker = Not LeftBlinker
             If e.KeyCode = RightBlinkerKey2 Then RightBlinker = Not RightBlinker

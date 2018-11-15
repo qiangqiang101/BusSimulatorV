@@ -29,11 +29,7 @@ Module Helper
             If vehicle.IsSeatFree(VehicleSeat.RightRear) Then
                 Return VehicleSeat.RightRear
             Else
-                If vehicle.IsSeatFree(VehicleSeat.ExtraSeat1) Then
-                    Return VehicleSeat.ExtraSeat1
-                Else
-                    Return VehicleSeat.ExtraSeat2
-                End If
+                Return VehicleSeat.Passenger
             End If
         End If
     End Function
@@ -147,9 +143,14 @@ Module Helper
     End Enum
 
     Public Enum EnterBusFlag
-        Normal = 1
-        Teleport = 3
+        None
+        Normal
+        WarpTo
+        Teleport
+        AllowJacking = 8
         TeleportDirectly = 16
+        EnterFromOppositeSide = 262144
+        DoNotEnter = 524288
     End Enum
 
     Public Enum LeaveBusFlag
@@ -160,6 +161,7 @@ Module Helper
         LeaveDoorsOpen = 256
         Unk1 = 320
         Unk2 = 512
+        BailOut = 4096
         ThrowingOut = 4160
         Unk3 = 131072
         MovesToPassengerSeatFirst = 262144

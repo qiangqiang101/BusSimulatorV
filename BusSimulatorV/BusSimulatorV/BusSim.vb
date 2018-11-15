@@ -31,6 +31,7 @@ Public Class BusSim
     Public FrontDoorKey, RearDoorKey, LeftBlinkerKey, RightBlinkerKey As GTA.Control
     Public FrontDoorKey2, RearDoorKey2, LeftBlinkerKey2, RightBlinkerKey2 As Keys
     Dim Speedometer As SpeedMeasurement
+    Dim DebugMode As Boolean
     Public LeftBlinker, RightBlinker As Boolean
     Public PedRelationshipGroup As Integer
     Public Shared PassengerPedGroup As New List(Of Ped)
@@ -48,6 +49,7 @@ Public Class BusSim
             LeftBlinkerKey2 = config.GetValue(Of Keys)("KBCONTROL", "LeftBlinker", Keys.Left)
             RightBlinkerKey2 = config.GetValue(Of Keys)("KBCONTROL", "RightBlinker", Keys.Right)
             Speedometer = config.GetValue(Of SpeedMeasurement)("GENERAL", "Speedometer", SpeedMeasurement.KPH)
+            DebugMode = config.GetValue(Of Boolean)("GENERAL", "DebugMode", False)
         Catch ex As Exception
             Logger.Log(String.Format("(LoadSettings): {0} {1}", ex.Message, ex.StackTrace))
         End Try
@@ -122,9 +124,12 @@ Public Class BusSim
 
             For Each xmlFile As String In Directory.GetFiles("scripts\BusSimulatorV\Route", "*.xml")
                 If File.Exists(xmlFile) Then
+                    Dim br As BusRoute = New BusRoute(xmlFile)
+                    br = br.ReadFromFile
                     itemMRoute = New UIMenuItem(Path.GetFileNameWithoutExtension(xmlFile))
                     With itemMRoute
                         .SubString1 = xmlFile
+                        .Description = $"Author: {br.Author}~n~Version: {br.Version}~n~Description: {br.Description}"
                     End With
                     RouteMenu.AddItem(itemMRoute)
                 End If
@@ -144,6 +149,10 @@ Public Class BusSim
 
             itemPlay.Enabled = True
             itemRoute.SetRightLabel(selectedItem.Text)
+            For Each item As UIMenuItem In sender.MenuItems
+                item.SetRightBadge(UIMenuItem.BadgeStyle.None)
+            Next
+            selectedItem.SetRightBadge(UIMenuItem.BadgeStyle.Tick)
             sender.GoBack()
         Catch ex As Exception
             Logger.Log(String.Format("(RouteMenu_OnItemSelect): {0} {1}", ex.Message, ex.StackTrace))
@@ -173,7 +182,7 @@ Public Class BusSim
         If IsInGame Then
             If Game.Player.Character.IsInVehicle(Bus) Then
                 DrawMarker(CurrentRoute.Stations(CurrentStationIndex).StationCoords)
-                If IsGameUIVisible() Then UpdateTimerBars() : DrawSeat() ': UI.ShowSubtitle(Bus.GetEmptySeatString)
+                If IsGameUIVisible() Then UpdateTimerBars() : DrawDebugObjects()
             End If
 
             Try
@@ -200,17 +209,6 @@ Public Class BusSim
                         ped.Task.ClearAll()
                         PassengerPedGroup.Remove(ped)
                     Next
-                    'If Not LeavedPassengerPedGroup.Count = 0 Then
-                    '    For Each ped As Ped In LeavedPassengerPedGroup
-                    '        ped.CurrentBlip.Remove()
-                    '        Select Case ped.SeatIndex
-                    '            Case VehicleSeat.ExtraSeat1, VehicleSeat.ExtraSeat2, VehicleSeat.ExtraSeat3, VehicleSeat.ExtraSeat4, VehicleSeat.ExtraSeat5, VehicleSeat.ExtraSeat6, VehicleSeat.ExtraSeat7, VehicleSeat.ExtraSeat8, VehicleSeat.ExtraSeat9, VehicleSeat.ExtraSeat10, VehicleSeat.ExtraSeat11, VehicleSeat.ExtraSeat12
-                    '                ped.Task.WarpIntoVehicle(Bus, VehicleSeat.Passenger)
-                    '        End Select
-                    '        ped.Task.LeaveVehicle(Bus, LeaveVehicleFlags.LeaveDoorOpen)
-                    '        ped.RelationshipGroup = 0
-                    '    Next
-                    'End If
                     PassengerPedGroup.Clear()
                     LeavedPassengerPedGroup.Clear()
 
@@ -236,14 +234,6 @@ Public Class BusSim
                 If CurrentStationIndex = CurrentRoute.TotalStation Then
                     For Each ped As Ped In Bus.Passengers
                         If Not ped = Game.Player.Character Then
-                            'ped.CurrentBlip.Remove()
-                            'ped.RelationshipGroup = 0
-                            'ped.Task.ClearAll()
-                            'Select Case ped.SeatIndex
-                            '    Case VehicleSeat.ExtraSeat1, VehicleSeat.ExtraSeat2, VehicleSeat.ExtraSeat3, VehicleSeat.ExtraSeat4, VehicleSeat.ExtraSeat5, VehicleSeat.ExtraSeat6, VehicleSeat.ExtraSeat7, VehicleSeat.ExtraSeat8, VehicleSeat.ExtraSeat9, VehicleSeat.ExtraSeat10, VehicleSeat.ExtraSeat11, VehicleSeat.ExtraSeat12
-                            '        ped.Task.WarpIntoVehicle(Bus, VehicleSeat.Passenger)
-                            'End Select
-                            'ped.Task.LeaveVehicle(Bus, LeaveVehicleFlags.LeaveDoorOpen)
                             LastStationPassengerPedGroup.Add(ped)
                         End If
                     Next
@@ -260,6 +250,11 @@ Public Class BusSim
                     itemPlay.Enabled = True
                     RemoveTimerBars()
                     BigMessageThread.MessageInstance.ShowMissionPassedMessage("Mission Passed")
+                    Bus.RemoveAllExtras
+                    Bus.OpenDoor(VehicleDoor.FrontLeftDoor, False, False)
+                    Bus.OpenDoor(VehicleDoor.FrontRightDoor, False, False)
+                    Bus.OpenDoor(VehicleDoor.BackLeftDoor, False, False)
+                    Bus.OpenDoor(VehicleDoor.BackRightDoor, False, false)
                 Else
                     b = BlipDict.Item(CurrentStationIndex)
                     b.ShowRoute = True
@@ -270,20 +265,17 @@ Public Class BusSim
                             ped.Task.ClearAll()
                             PassengerPedGroup.Remove(ped)
                         End If
-                        'If Not LeavedPassengerPedGroup.Count = 0 Then
-                        '    For Each ped As Ped In LeavedPassengerPedGroup
-                        '        ped.CurrentBlip.Remove()
-                        '        Select Case ped.SeatIndex
-                        '            Case VehicleSeat.ExtraSeat1, VehicleSeat.ExtraSeat2, VehicleSeat.ExtraSeat3, VehicleSeat.ExtraSeat4, VehicleSeat.ExtraSeat5, VehicleSeat.ExtraSeat6, VehicleSeat.ExtraSeat7, VehicleSeat.ExtraSeat8, VehicleSeat.ExtraSeat9, VehicleSeat.ExtraSeat10, VehicleSeat.ExtraSeat11, VehicleSeat.ExtraSeat12
-                        '                ped.Task.WarpIntoVehicle(Bus, VehicleSeat.Passenger)
-                        '        End Select
-                        '        ped.Task.LeaveVehicle(Bus, LeaveVehicleFlags.LeaveDoorOpen)
-                        '        ped.RelationshipGroup = 0
-                        '    Next
-                        'End If
+                    End If
+                    If Not PassengerPedGroup.Count = 0 Then
+                        If Not Bus.Position.DistanceTo(CurrentRoute.Stations(0).StationCoords) <= 5.0F Then
+                            Dim ped As Ped = PassengerPedGroup(New Random().Next(0, PassengerPedGroup.Count))
+                            LeavedPassengerPedGroup.Add(ped)
+                            ped.Task.ClearAll()
+                            PassengerPedGroup.Remove(ped)
+                        End If
                     End If
                     If Not PassengerPedGroup.Count >= 15 Then
-                        Dim pedCount As Integer = 0, maxPed As Integer = 3
+                        Dim pedCount As Integer = 0, maxPed As Integer = 5
                         For Each ped As Ped In World.GetNearbyPeds(Game.Player.Character, 15.0F)
                             If pedCount < maxPed AndAlso Not ped = Game.Player.Character AndAlso Not ped.IsInVehicle() Then
                                 If Not PassengerPedGroup.Contains(ped) Then
@@ -464,34 +456,80 @@ Public Class BusSim
         End Try
     End Sub
 
+    Public Sub DrawDebugObjects()
+        If DebugMode Then
+            DrawSeat()
+            DrawCoords()
+        End If
+    End Sub
+
     Public Sub DrawSeat()
         Try
             Dim SRMR As SizeF = UIMenu.GetScreenResolutionMaintainRatio
             Dim SZB As Point = UIMenu.GetSafezoneBounds
             Dim X As Integer = 500
-            Dim Y As Integer = 200
+            Dim Y As Integer = 190
             Dim BusLayout As New UIResRectangle(New Point(((X - SZB.X) - 1), (((Convert.ToInt32(SRMR.Height) - SZB.Y) - Y) - 4)), New Size(42, 190), Color.FromArgb(200, 0, 0, 0)) : BusLayout.Draw()
-            Dim BusNum As New UIResRectangle(New Point(BusLayout.Position.X + 1, BusLayout.Position.Y + 1), New Size(40, 25), Color.Orange) : BusNum.Draw()
+            Dim BusNum As New UIResRectangle(New Point(BusLayout.Position.X + 1, BusLayout.Position.Y + 1), New Size(40, 25), Color.FromArgb(200, Color.Orange)) : BusNum.Draw()
             Dim busText As New UIResText(CurrentRoute.RouteNumber, New Point(BusNum.Position.X + (BusNum.Size.Width / 2), BusNum.Position.Y), 0.3F, Color.White, GTA.Font.ChaletLondon, UIResText.Alignment.Centered) : busText.Outline = True : busText.Draw()
 
-            Dim SD As New UIResRectangle(New Point(BusNum.Position.X + 1, BusNum.Position.Y + BusNum.Size.Height + 2), New Size(18, 18), If(Bus.IsSeatFree(VehicleSeat.Driver), Color.LightGreen, Color.White)) : SD.Draw()
-            Dim SP As New UIResRectangle(New Point(BusNum.Position.X + 22, BusNum.Position.Y + BusNum.Size.Height + 2), New Size(18, 18), If(Bus.IsSeatFree(VehicleSeat.Passenger), Color.LightGreen, Color.White)) : SP.Draw()
-            Dim SLR As New UIResRectangle(New Point(BusNum.Position.X + 1, BusNum.Position.Y + BusNum.Size.Height + 22), New Size(18, 18), If(Bus.IsSeatFree(VehicleSeat.LeftRear), Color.LightGreen, Color.White)) : SLR.Draw()
-            Dim SRR As New UIResRectangle(New Point(BusNum.Position.X + 22, BusNum.Position.Y + BusNum.Size.Height + 22), New Size(18, 18), If(Bus.IsSeatFree(VehicleSeat.RightRear), Color.LightGreen, Color.White)) : SRR.Draw()
-            Dim SE1 As New UIResRectangle(New Point(BusNum.Position.X + 1, BusNum.Position.Y + BusNum.Size.Height + 42), New Size(18, 18), If(Bus.IsSeatFree(VehicleSeat.ExtraSeat1), Color.LightGreen, Color.White)) : SE1.Draw()
-            Dim SE2 As New UIResRectangle(New Point(BusNum.Position.X + 22, BusNum.Position.Y + BusNum.Size.Height + 42), New Size(18, 18), If(Bus.IsSeatFree(VehicleSeat.ExtraSeat2), Color.LightGreen, Color.White)) : SE2.Draw()
-            Dim SE3 As New UIResRectangle(New Point(BusNum.Position.X + 1, BusNum.Position.Y + BusNum.Size.Height + 62), New Size(18, 18), If(Bus.IsSeatFree(VehicleSeat.ExtraSeat3), Color.LightGreen, Color.White)) : SE3.Draw()
-            Dim SE4 As New UIResRectangle(New Point(BusNum.Position.X + 22, BusNum.Position.Y + BusNum.Size.Height + 62), New Size(18, 18), If(Bus.IsSeatFree(VehicleSeat.ExtraSeat4), Color.LightGreen, Color.White)) : SE4.Draw()
-            Dim SE5 As New UIResRectangle(New Point(BusNum.Position.X + 1, BusNum.Position.Y + BusNum.Size.Height + 82), New Size(18, 18), If(Bus.IsSeatFree(VehicleSeat.ExtraSeat5), Color.LightGreen, Color.White)) : SE5.Draw()
-            Dim SE6 As New UIResRectangle(New Point(BusNum.Position.X + 22, BusNum.Position.Y + BusNum.Size.Height + 82), New Size(18, 18), If(Bus.IsSeatFree(VehicleSeat.ExtraSeat6), Color.LightGreen, Color.White)) : SE6.Draw()
-            Dim SE7 As New UIResRectangle(New Point(BusNum.Position.X + 1, BusNum.Position.Y + BusNum.Size.Height + 102), New Size(18, 18), If(Bus.IsSeatFree(VehicleSeat.ExtraSeat7), Color.LightGreen, Color.White)) : SE7.Draw()
-            Dim SE8 As New UIResRectangle(New Point(BusNum.Position.X + 22, BusNum.Position.Y + BusNum.Size.Height + 102), New Size(18, 18), If(Bus.IsSeatFree(VehicleSeat.ExtraSeat8), Color.LightGreen, Color.White)) : SE8.Draw()
-            Dim SE9 As New UIResRectangle(New Point(BusNum.Position.X + 1, BusNum.Position.Y + BusNum.Size.Height + 122), New Size(18, 18), If(Bus.IsSeatFree(VehicleSeat.ExtraSeat9), Color.LightGreen, Color.White)) : SE9.Draw()
-            Dim SE10 As New UIResRectangle(New Point(BusNum.Position.X + 22, BusNum.Position.Y + BusNum.Size.Height + 122), New Size(18, 18), If(Bus.IsSeatFree(VehicleSeat.ExtraSeat10), Color.LightGreen, Color.White)) : SE10.Draw()
-            Dim SE11 As New UIResRectangle(New Point(BusNum.Position.X + 1, BusNum.Position.Y + BusNum.Size.Height + 142), New Size(18, 18), If(Bus.IsSeatFree(VehicleSeat.ExtraSeat11), Color.LightGreen, Color.White)) : SE11.Draw()
-            Dim SE12 As New UIResRectangle(New Point(BusNum.Position.X + 22, BusNum.Position.Y + BusNum.Size.Height + 142), New Size(18, 18), If(Bus.IsSeatFree(VehicleSeat.ExtraSeat12), Color.LightGreen, Color.White)) : SE12.Draw()
+            Dim SD As New UIResRectangle(New Point(BusNum.Position.X + 1, BusNum.Position.Y + BusNum.Size.Height + 2), New Size(18, 18), If(Bus.IsSeatFree(VehicleSeat.Driver), Color.FromArgb(200, Color.LightGreen), Color.FromArgb(200, Color.White))) : SD.Draw()
+            Dim SP As New UIResRectangle(New Point(BusNum.Position.X + 22, BusNum.Position.Y + BusNum.Size.Height + 2), New Size(18, 18), If(Bus.IsSeatFree(VehicleSeat.Passenger), Color.FromArgb(200, Color.LightGreen), Color.FromArgb(200, Color.White))) : SP.Draw()
+            Dim SLR As New UIResRectangle(New Point(BusNum.Position.X + 1, BusNum.Position.Y + BusNum.Size.Height + 22), New Size(18, 18), If(Bus.IsSeatFree(VehicleSeat.LeftRear), Color.FromArgb(200, Color.LightGreen), Color.FromArgb(200, Color.White))) : SLR.Draw()
+            Dim SRR As New UIResRectangle(New Point(BusNum.Position.X + 22, BusNum.Position.Y + BusNum.Size.Height + 22), New Size(18, 18), If(Bus.IsSeatFree(VehicleSeat.RightRear), Color.FromArgb(200, Color.LightGreen), Color.FromArgb(200, Color.White))) : SRR.Draw()
+            Dim SE1 As New UIResRectangle(New Point(BusNum.Position.X + 1, BusNum.Position.Y + BusNum.Size.Height + 42), New Size(18, 18), If(Bus.IsSeatFree(VehicleSeat.ExtraSeat1), Color.FromArgb(200, Color.LightGreen), Color.FromArgb(200, Color.White))) : SE1.Draw()
+            Dim SE2 As New UIResRectangle(New Point(BusNum.Position.X + 22, BusNum.Position.Y + BusNum.Size.Height + 42), New Size(18, 18), If(Bus.IsSeatFree(VehicleSeat.ExtraSeat2), Color.FromArgb(200, Color.LightGreen), Color.FromArgb(200, Color.White))) : SE2.Draw()
+            Dim SE3 As New UIResRectangle(New Point(BusNum.Position.X + 1, BusNum.Position.Y + BusNum.Size.Height + 62), New Size(18, 18), If(Bus.IsSeatFree(VehicleSeat.ExtraSeat3), Color.FromArgb(200, Color.LightGreen), Color.FromArgb(200, Color.White))) : SE3.Draw()
+            Dim SE4 As New UIResRectangle(New Point(BusNum.Position.X + 22, BusNum.Position.Y + BusNum.Size.Height + 62), New Size(18, 18), If(Bus.IsSeatFree(VehicleSeat.ExtraSeat4), Color.FromArgb(200, Color.LightGreen), Color.FromArgb(200, Color.White))) : SE4.Draw()
+            Dim SE5 As New UIResRectangle(New Point(BusNum.Position.X + 1, BusNum.Position.Y + BusNum.Size.Height + 82), New Size(18, 18), If(Bus.IsSeatFree(VehicleSeat.ExtraSeat5), Color.FromArgb(200, Color.LightGreen), Color.FromArgb(200, Color.White))) : SE5.Draw()
+            Dim SE6 As New UIResRectangle(New Point(BusNum.Position.X + 22, BusNum.Position.Y + BusNum.Size.Height + 82), New Size(18, 18), If(Bus.IsSeatFree(VehicleSeat.ExtraSeat6), Color.FromArgb(200, Color.LightGreen), Color.FromArgb(200, Color.White))) : SE6.Draw()
+            Dim SE7 As New UIResRectangle(New Point(BusNum.Position.X + 1, BusNum.Position.Y + BusNum.Size.Height + 102), New Size(18, 18), If(Bus.IsSeatFree(VehicleSeat.ExtraSeat7), Color.FromArgb(200, Color.LightGreen), Color.FromArgb(200, Color.White))) : SE7.Draw()
+            Dim SE8 As New UIResRectangle(New Point(BusNum.Position.X + 22, BusNum.Position.Y + BusNum.Size.Height + 102), New Size(18, 18), If(Bus.IsSeatFree(VehicleSeat.ExtraSeat8), Color.FromArgb(200, Color.LightGreen), Color.FromArgb(200, Color.White))) : SE8.Draw()
+            Dim SE9 As New UIResRectangle(New Point(BusNum.Position.X + 1, BusNum.Position.Y + BusNum.Size.Height + 122), New Size(18, 18), If(Bus.IsSeatFree(VehicleSeat.ExtraSeat9), Color.FromArgb(200, Color.LightGreen), Color.FromArgb(200, Color.White))) : SE9.Draw()
+            Dim SE10 As New UIResRectangle(New Point(BusNum.Position.X + 22, BusNum.Position.Y + BusNum.Size.Height + 122), New Size(18, 18), If(Bus.IsSeatFree(VehicleSeat.ExtraSeat10), Color.FromArgb(200, Color.LightGreen), Color.FromArgb(200, Color.White))) : SE10.Draw()
+            Dim SE11 As New UIResRectangle(New Point(BusNum.Position.X + 1, BusNum.Position.Y + BusNum.Size.Height + 142), New Size(18, 18), If(Bus.IsSeatFree(VehicleSeat.ExtraSeat11), Color.FromArgb(200, Color.LightGreen), Color.FromArgb(200, Color.White))) : SE11.Draw()
+            Dim SE12 As New UIResRectangle(New Point(BusNum.Position.X + 22, BusNum.Position.Y + BusNum.Size.Height + 142), New Size(18, 18), If(Bus.IsSeatFree(VehicleSeat.ExtraSeat12), Color.FromArgb(200, Color.LightGreen), Color.FromArgb(200, Color.White))) : SE12.Draw()
         Catch ex As Exception
             Logger.Log(String.Format("(DrawSeat): {0} {1}", ex.Message, ex.StackTrace))
+        End Try
+    End Sub
+
+    Public Sub DrawCoords()
+        Try
+            Dim SRMR As SizeF = UIMenu.GetScreenResolutionMaintainRatio
+            Dim SZB As Point = UIMenu.GetSafezoneBounds
+            Dim pv3 As Vector3 = Game.Player.Character.Position
+            Dim cv3 As Vector3 = GameplayCamera.Position
+            Dim av3 As Vector3 = World.GetCrosshairCoordinates.HitCoords
+            Dim pr3 As Vector3 = Game.Player.Character.Rotation
+            Dim cr3 As Vector3 = GameplayCamera.Rotation
+
+            Dim X As Integer = 544
+            Dim Y As Integer = 190
+            Dim BoxLayout1 As New UIResRectangle(New Point(((X - SZB.X) - 1), (((Convert.ToInt32(SRMR.Height) - SZB.Y) - Y) - 4)), New Size(400, 190), Color.FromArgb(200, 0, 0, 0)) : BoxLayout1.Draw()
+            Dim BoxTitle1 As New UIResRectangle(New Point(BoxLayout1.Position.X + 1, BoxLayout1.Position.Y + 1), New Size(398, 25), Color.FromArgb(200, Color.Orange)) : BoxTitle1.Draw()
+            Dim TitleText1 As New UIResText("Route Info", New Point(BoxTitle1.Position.X + (BoxTitle1.Size.Width / 2), BoxTitle1.Position.Y), 0.3F, Color.White, GTA.Font.ChaletLondon, UIResText.Alignment.Centered) : TitleText1.Outline = True : TitleText1.Draw()
+            Dim Line1 As New UIResText($"Route Name: {CurrentRoute.RouteName}", New Point(BoxTitle1.Position.X + 10, BoxTitle1.Position.Y + 30), 0.25F, Color.White, GTA.Font.ChaletLondon, UIResText.Alignment.Left) : Line1.Outline = True : Line1.Draw()
+            Dim Line2 As New UIResText($"Bus Model: {CurrentRoute.BusModel}", New Point(BoxTitle1.Position.X + 10, BoxTitle1.Position.Y + 50), 0.25F, Color.White, GTA.Font.ChaletLondon, UIResText.Alignment.Left) : Line2.Outline = True : Line2.Draw()
+            Dim BoxTitle2 As New UIResRectangle(New Point(BoxLayout1.Position.X + 1, BoxLayout1.Position.Y + 81), New Size(398, 25), Color.FromArgb(200, Color.Orange)) : BoxTitle2.Draw()
+            Dim TitleText2 As New UIResText("World Info", New Point(BoxTitle2.Position.X + (BoxTitle2.Size.Width / 2), BoxTitle2.Position.Y), 0.3F, Color.White, GTA.Font.ChaletLondon, UIResText.Alignment.Centered) : TitleText2.Outline = True : TitleText2.Draw()
+            Dim Line7 As New UIResText($"Street Name: {World.GetStreetName(pv3)}", New Point(BoxTitle2.Position.X + 10, BoxTitle2.Position.Y + 30), 0.25F, Color.White, GTA.Font.ChaletLondon, UIResText.Alignment.Left) : Line7.Outline = True : Line7.Draw()
+            Dim Line8 As New UIResText($"Zone Name: {World.GetZoneName(pv3)}", New Point(BoxTitle2.Position.X + 10, BoxTitle2.Position.Y + 50), 0.25F, Color.White, GTA.Font.ChaletLondon, UIResText.Alignment.Left) : Line8.Outline = True : Line8.Draw()
+            Dim Line9 As New UIResText($"Zone Label: {World.GetZoneNameLabel(pv3)}", New Point(BoxTitle2.Position.X + 10, BoxTitle2.Position.Y + 70), 0.25F, Color.White, GTA.Font.ChaletLondon, UIResText.Alignment.Left) : Line9.Outline = True : Line9.Draw()
+
+            X = 946
+            Dim BoxLayout2 As New UIResRectangle(New Point(((X - SZB.X) - 1), (((Convert.ToInt32(SRMR.Height) - SZB.Y) - Y) - 4)), New Size(400, 190), Color.FromArgb(200, 0, 0, 0)) : BoxLayout2.Draw()
+            Dim BoxTitle3 As New UIResRectangle(New Point(BoxLayout2.Position.X + 1, BoxLayout2.Position.Y + 1), New Size(398, 25), Color.FromArgb(200, Color.Orange)) : BoxTitle3.Draw()
+            Dim TitleText3 As New UIResText("Position Coordinates", New Point(BoxTitle3.Position.X + (BoxTitle3.Size.Width / 2), BoxTitle3.Position.Y), 0.3F, Color.White, GTA.Font.ChaletLondon, UIResText.Alignment.Centered) : TitleText3.Outline = True : TitleText3.Draw()
+            Dim Line3 As New UIResText($"Bus X: {pv3.X.ToString("0.0000")} Y: {pv3.Y.ToString("0.0000")} Z: {pv3.Z.ToString("0.0000")} H: {Game.Player.Character.Heading.ToString("0.0000")}", New Point(BoxTitle3.Position.X + 10, BoxTitle3.Position.Y + 30), 0.25F, Color.White, GTA.Font.ChaletLondon, UIResText.Alignment.Left) : Line3.Outline = True : Line3.Draw()
+            Dim Line5 As New UIResText($"Camera X: {cv3.X.ToString("0.0000")} Y: {cv3.Y.ToString("0.0000")} Z: {cv3.Z.ToString("0.0000")}", New Point(BoxTitle3.Position.X + 10, BoxTitle3.Position.Y + 50), 0.25F, Color.White, GTA.Font.ChaletLondon, UIResText.Alignment.Left) : Line5.Outline = True : Line5.Draw()
+            Dim Line6 As New UIResText($"Crosshair X: {av3.X.ToString("0.0000")} Y: {av3.Y.ToString("0.0000")} Z: {av3.Z.ToString("0.0000")}", New Point(BoxTitle3.Position.X + 10, BoxTitle3.Position.Y + 70), 0.25F, Color.White, GTA.Font.ChaletLondon, UIResText.Alignment.Left) : Line6.Outline = True : Line6.Draw()
+            Dim BoxTitle4 As New UIResRectangle(New Point(BoxLayout2.Position.X + 1, BoxLayout2.Position.Y + 101), New Size(398, 25), Color.FromArgb(200, Color.Orange)) : BoxTitle4.Draw()
+            Dim TitleText4 As New UIResText("Rotation Coordinates", New Point(BoxTitle4.Position.X + (BoxTitle4.Size.Width / 2), BoxTitle4.Position.Y), 0.3F, Color.White, GTA.Font.ChaletLondon, UIResText.Alignment.Centered) : TitleText4.Outline = True : TitleText4.Draw()
+            Dim Line10 As New UIResText($"Bus X: {pr3.X.ToString("0.0000")} Y: {pr3.Y.ToString("0.0000")} Z: {pr3.Z.ToString("0.0000")}", New Point(BoxTitle4.Position.X + 10, BoxTitle4.Position.Y + 30), 0.25F, Color.White, GTA.Font.ChaletLondon, UIResText.Alignment.Left) : Line10.Outline = True : Line10.Draw()
+            Dim Line12 As New UIResText($"Camera X: {cr3.X.ToString("0.0000")} Y: {cr3.Y.ToString("0.0000")} Z: {cr3.Z.ToString("0.0000")}", New Point(BoxTitle4.Position.X + 10, BoxTitle4.Position.Y + 50), 0.25F, Color.White, GTA.Font.ChaletLondon, UIResText.Alignment.Left) : Line12.Outline = True : Line12.Draw()
+        Catch ex As Exception
+            Logger.Log(String.Format("(DrawCoords): {0} {1}", ex.Message, ex.StackTrace))
         End Try
     End Sub
 

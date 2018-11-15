@@ -23,55 +23,60 @@ Module Helper
 
     <Extension()>
     Public Function GetEmptySeat(ByVal vehicle As Vehicle) As VehicleSeat
-        If vehicle.IsSeatFree(VehicleSeat.Passenger) Then
-            Return VehicleSeat.Passenger
+        If vehicle.IsSeatFree(VehicleSeat.LeftRear) Then
+            Return VehicleSeat.LeftRear
         Else
-            If vehicle.IsSeatFree(VehicleSeat.LeftRear) Then
-                Return VehicleSeat.LeftRear
+            If vehicle.IsSeatFree(VehicleSeat.RightRear) Then
+                Return VehicleSeat.RightRear
             Else
-                If vehicle.IsSeatFree(VehicleSeat.RightRear) Then
-                    Return VehicleSeat.RightRear
+                If vehicle.IsSeatFree(VehicleSeat.ExtraSeat1) Then
+                    Return VehicleSeat.ExtraSeat1
                 Else
-                    If vehicle.IsSeatFree(VehicleSeat.ExtraSeat1) Then
-                        Return VehicleSeat.ExtraSeat1
+                    Return VehicleSeat.ExtraSeat2
+                End If
+            End If
+        End If
+    End Function
+
+    <Extension()>
+    Public Function GetEmptyExtraSeat(ByVal vehicle As Vehicle, originSeat As VehicleSeat) As VehicleSeat
+        If vehicle.IsSeatFree(VehicleSeat.ExtraSeat12) Then
+            Return VehicleSeat.ExtraSeat12
+        Else
+            If vehicle.IsSeatFree(VehicleSeat.ExtraSeat11) Then
+                Return VehicleSeat.ExtraSeat11
+            Else
+                If vehicle.IsSeatFree(VehicleSeat.ExtraSeat10) Then
+                    Return VehicleSeat.ExtraSeat10
+                Else
+                    If vehicle.IsSeatFree(VehicleSeat.ExtraSeat9) Then
+                        Return VehicleSeat.ExtraSeat9
                     Else
-                        If vehicle.IsSeatFree(VehicleSeat.ExtraSeat2) Then
-                            Return VehicleSeat.ExtraSeat2
+                        If vehicle.IsSeatFree(VehicleSeat.ExtraSeat8) Then
+                            Return VehicleSeat.ExtraSeat8
                         Else
-                            If vehicle.IsSeatFree(VehicleSeat.ExtraSeat3) Then
-                                Return VehicleSeat.ExtraSeat3
+                            If vehicle.IsSeatFree(VehicleSeat.ExtraSeat7) Then
+                                Return VehicleSeat.ExtraSeat7
                             Else
-                                If vehicle.IsSeatFree(VehicleSeat.ExtraSeat4) Then
-                                    Return VehicleSeat.ExtraSeat4
+                                If vehicle.IsSeatFree(VehicleSeat.ExtraSeat6) Then
+                                    Return VehicleSeat.ExtraSeat6
                                 Else
                                     If vehicle.IsSeatFree(VehicleSeat.ExtraSeat5) Then
                                         Return VehicleSeat.ExtraSeat5
                                     Else
-                                        If vehicle.IsSeatFree(VehicleSeat.ExtraSeat6) Then
-                                            Return VehicleSeat.ExtraSeat6
+                                        If vehicle.IsSeatFree(VehicleSeat.ExtraSeat4) Then
+                                            Return VehicleSeat.ExtraSeat4
                                         Else
-                                            If vehicle.IsSeatFree(VehicleSeat.ExtraSeat7) Then
-                                                Return VehicleSeat.ExtraSeat7
+                                            If vehicle.IsSeatFree(VehicleSeat.ExtraSeat3) Then
+                                                Return VehicleSeat.ExtraSeat3
                                             Else
-                                                If vehicle.IsSeatFree(VehicleSeat.ExtraSeat8) Then
-                                                    Return VehicleSeat.ExtraSeat8
+                                                If vehicle.IsSeatFree(VehicleSeat.ExtraSeat2) Then
+                                                    Return VehicleSeat.ExtraSeat2
                                                 Else
-                                                    If vehicle.IsSeatFree(VehicleSeat.ExtraSeat9) Then
-                                                        Return VehicleSeat.ExtraSeat9
+                                                    If vehicle.IsSeatFree(VehicleSeat.ExtraSeat1) Then
+                                                        Return VehicleSeat.ExtraSeat1
                                                     Else
-                                                        If vehicle.IsSeatFree(VehicleSeat.ExtraSeat10) Then
-                                                            Return VehicleSeat.ExtraSeat10
-                                                        Else
-                                                            If vehicle.IsSeatFree(VehicleSeat.ExtraSeat11) Then
-                                                                Return VehicleSeat.ExtraSeat11
-                                                            Else
-                                                                If vehicle.IsSeatFree(VehicleSeat.ExtraSeat12) Then
-                                                                    Return VehicleSeat.ExtraSeat12
-                                                                Else
-                                                                    Return VehicleSeat.Any
-                                                                End If
-                                                            End If
-                                                        End If
+                                                        Return originSeat
                                                     End If
                                                 End If
                                             End If
@@ -122,7 +127,6 @@ Module Helper
         vehicle.LeftIndicatorLightOn = onoff
         vehicle.RightIndicatorLightOn = onoff
     End Sub
-
 
     Public Function IsCheating(Cheat As String) As Boolean
         Return Native.Function.Call(Of Boolean)(Hash._0x557E43C447E700A8, GTA.Game.GenerateHash(Cheat))
@@ -191,5 +195,9 @@ Module Helper
             End If
         Next
         Return Nothing
+    End Function
+
+    Public Function IsGameUIVisible() As Boolean
+        Return Native.Function.Call(Of Boolean)(Hash._0xAF754F20EB5CD51A)
     End Function
 End Module

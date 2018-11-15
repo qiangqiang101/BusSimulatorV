@@ -34,7 +34,8 @@ Public Class BusSim
     Public LeftBlinker, RightBlinker As Boolean
     Public PedRelationshipGroup As Integer
     Public Shared PassengerPedGroup As New List(Of Ped)
-    Public LeavedPassengerPedGroup As New List(Of Ped)
+    Public Shared LeavedPassengerPedGroup As New List(Of Ped)
+    Public Shared LastStationPassengerPedGroup As New List(Of Ped)
 
     Public Sub LoadSettings()
         Try
@@ -170,7 +171,10 @@ Public Class BusSim
         End If
 
         If IsInGame Then
-            If Game.Player.Character.IsInVehicle(Bus) Then UpdateTimerBars() : DrawMarker(CurrentRoute.Stations(CurrentStationIndex).StationCoords)
+            If Game.Player.Character.IsInVehicle(Bus) Then
+                DrawMarker(CurrentRoute.Stations(CurrentStationIndex).StationCoords)
+                If IsGameUIVisible() Then UpdateTimerBars() : DrawSeat() ': UI.ShowSubtitle(Bus.GetEmptySeatString)
+            End If
 
             Try
                 For Each ped As Ped In Bus.Passengers
@@ -196,13 +200,17 @@ Public Class BusSim
                         ped.Task.ClearAll()
                         PassengerPedGroup.Remove(ped)
                     Next
-                    If Not LeavedPassengerPedGroup.Count = 0 Then
-                        For Each ped As Ped In LeavedPassengerPedGroup
-                            ped.CurrentBlip.Remove()
-                            ped.Task.LeaveVehicle(Bus, LeaveVehicleFlags.LeaveDoorOpen)
-                            ped.RelationshipGroup = 0
-                        Next
-                    End If
+                    'If Not LeavedPassengerPedGroup.Count = 0 Then
+                    '    For Each ped As Ped In LeavedPassengerPedGroup
+                    '        ped.CurrentBlip.Remove()
+                    '        Select Case ped.SeatIndex
+                    '            Case VehicleSeat.ExtraSeat1, VehicleSeat.ExtraSeat2, VehicleSeat.ExtraSeat3, VehicleSeat.ExtraSeat4, VehicleSeat.ExtraSeat5, VehicleSeat.ExtraSeat6, VehicleSeat.ExtraSeat7, VehicleSeat.ExtraSeat8, VehicleSeat.ExtraSeat9, VehicleSeat.ExtraSeat10, VehicleSeat.ExtraSeat11, VehicleSeat.ExtraSeat12
+                    '                ped.Task.WarpIntoVehicle(Bus, VehicleSeat.Passenger)
+                    '        End Select
+                    '        ped.Task.LeaveVehicle(Bus, LeaveVehicleFlags.LeaveDoorOpen)
+                    '        ped.RelationshipGroup = 0
+                    '    Next
+                    'End If
                     PassengerPedGroup.Clear()
                     LeavedPassengerPedGroup.Clear()
 
@@ -228,10 +236,15 @@ Public Class BusSim
                 If CurrentStationIndex = CurrentRoute.TotalStation Then
                     For Each ped As Ped In Bus.Passengers
                         If Not ped = Game.Player.Character Then
-                            ped.CurrentBlip.Remove()
-                            ped.RelationshipGroup = 0
-                            ped.Task.ClearAll()
-                            ped.Task.LeaveVehicle(Bus, LeaveVehicleFlags.LeaveDoorOpen)
+                            'ped.CurrentBlip.Remove()
+                            'ped.RelationshipGroup = 0
+                            'ped.Task.ClearAll()
+                            'Select Case ped.SeatIndex
+                            '    Case VehicleSeat.ExtraSeat1, VehicleSeat.ExtraSeat2, VehicleSeat.ExtraSeat3, VehicleSeat.ExtraSeat4, VehicleSeat.ExtraSeat5, VehicleSeat.ExtraSeat6, VehicleSeat.ExtraSeat7, VehicleSeat.ExtraSeat8, VehicleSeat.ExtraSeat9, VehicleSeat.ExtraSeat10, VehicleSeat.ExtraSeat11, VehicleSeat.ExtraSeat12
+                            '        ped.Task.WarpIntoVehicle(Bus, VehicleSeat.Passenger)
+                            'End Select
+                            'ped.Task.LeaveVehicle(Bus, LeaveVehicleFlags.LeaveDoorOpen)
+                            LastStationPassengerPedGroup.Add(ped)
                         End If
                     Next
                     PassengerPedGroup.Clear()
@@ -257,33 +270,19 @@ Public Class BusSim
                             ped.Task.ClearAll()
                             PassengerPedGroup.Remove(ped)
                         End If
-                        If Not LeavedPassengerPedGroup.Count = 0 Then
-                            For Each ped As Ped In LeavedPassengerPedGroup
-                                ped.CurrentBlip.Remove()
-                                ped.Task.LeaveVehicle(Bus, LeaveVehicleFlags.LeaveDoorOpen)
-                                ped.RelationshipGroup = 0
-                            Next
-                        End If
+                        'If Not LeavedPassengerPedGroup.Count = 0 Then
+                        '    For Each ped As Ped In LeavedPassengerPedGroup
+                        '        ped.CurrentBlip.Remove()
+                        '        Select Case ped.SeatIndex
+                        '            Case VehicleSeat.ExtraSeat1, VehicleSeat.ExtraSeat2, VehicleSeat.ExtraSeat3, VehicleSeat.ExtraSeat4, VehicleSeat.ExtraSeat5, VehicleSeat.ExtraSeat6, VehicleSeat.ExtraSeat7, VehicleSeat.ExtraSeat8, VehicleSeat.ExtraSeat9, VehicleSeat.ExtraSeat10, VehicleSeat.ExtraSeat11, VehicleSeat.ExtraSeat12
+                        '                ped.Task.WarpIntoVehicle(Bus, VehicleSeat.Passenger)
+                        '        End Select
+                        '        ped.Task.LeaveVehicle(Bus, LeaveVehicleFlags.LeaveDoorOpen)
+                        '        ped.RelationshipGroup = 0
+                        '    Next
+                        'End If
                     End If
                     If Not PassengerPedGroup.Count >= 15 Then
-                        'Dim ped As Ped = Game.Player.Character.Position.GetNearestNonPlayerPed(15.0F)
-                        'If Not ped = Nothing Then
-                        '    If Not PassengerPedGroup.Contains(ped) Then
-                        '        PassengerPedGroup.Add(ped)
-                        '        ped.RelationshipGroup = PedRelationshipGroup
-                        '        ped.StopPedFlee
-                        '        Dim pedblip As Blip = ped.AddBlip
-                        '        With pedblip
-                        '            .Sprite = BlipSprite.Friend
-                        '            .Color = BlipColor.Blue
-                        '            .IsFriendly = True
-                        '            .Name = "Passenger"
-                        '        End With
-                        '        ped.Task.ClearAll()
-                        '        ped.Task.EnterVehicle(Bus, VehicleSeat.Any, 5000, 2.0F, EnterBusFlag.Normal)
-                        '        Earned += CurrentRoute.RouteFare
-                        '    End If
-                        'End If
                         Dim pedCount As Integer = 0, maxPed As Integer = 3
                         For Each ped As Ped In World.GetNearbyPeds(Game.Player.Character, 15.0F)
                             If pedCount < maxPed AndAlso Not ped = Game.Player.Character AndAlso Not ped.IsInVehicle() Then
@@ -291,7 +290,6 @@ Public Class BusSim
                                     ped.StopPedFlee
                                     ped.RelationshipGroup = PedRelationshipGroup
                                     ped.Task.ClearAll()
-                                    'ped.Task.EnterVehicle(Bus, VehicleSeat.Any, 5000, 2.0F, EnterBusFlag.Normal)
 
                                     Dim pedblip As Blip = ped.AddBlip
                                     With pedblip
@@ -322,48 +320,47 @@ Public Class BusSim
             Bus.RightIndicatorLightOn = RightBlinker
             If Game.IsControlJustReleased(0, LeftBlinkerKey) AndAlso Game.Player.Character.IsInVehicle(Bus) Then LeftBlinker = Not LeftBlinker
             If Game.IsControlJustReleased(0, RightBlinkerKey) AndAlso Game.Player.Character.IsInVehicle(Bus) Then RightBlinker = Not RightBlinker
+        Else
+            DrawMarker(MenuActivator, New Vector3(1.0F, 1.0F, 1.0F), Color.CadetBlue)
         End If
 
-        If Game.Player.Character.Position.DistanceTo2D(MenuActivator) <= 3.0 AndAlso Not Game.Player.Character.IsInVehicle Then
-                If Game.IsControlJustReleased(0, GTA.Control.Context) Then
-                    MainMenu.Show()
-                    MenuCamera = World.CreateCamera(CameraPos, CameraRot, GameplayCamera.FieldOfView)
-                    World.RenderingCamera = MenuCamera
-                Else
-                    DisplayHelpTextThisFrame("Press ~INPUT_CONTEXT~ to work.")
-                End If
+        If Game.Player.Character.Position.DistanceTo(MenuActivator) <= 2.0 AndAlso Not Game.Player.Character.IsInVehicle Then
+            If Game.IsControlJustReleased(0, GTA.Control.Context) Then
+                MainMenu.Show()
+                MenuCamera = World.CreateCamera(CameraPos, CameraRot, GameplayCamera.FieldOfView)
+                World.RenderingCamera = MenuCamera
+            Else
+                DisplayHelpTextThisFrame("Press ~INPUT_CONTEXT~ to work as Bus Driver.")
             End If
+        End If
         'Catch ex As Exception
         '    Logger.Log(String.Format("(BusSim_Tick): {0} {1}", ex.Message, ex.StackTrace))
         'End Try
     End Sub
 
     Private Sub BusSim_Aborted(sender As Object, e As EventArgs) Handles Me.Aborted
-        Try
-            If Not Bus = Nothing Then Bus.Delete()
-            For Each blip As Blip In BlipList
-                blip.Remove()
+        On Error Resume Next
+        If Not Bus = Nothing Then Bus.Delete()
+        For Each blip As Blip In BlipList
+            blip.Remove()
+        Next
+        ModBlip.Remove()
+        If Not PassengerPedGroup.Count = 0 Then
+            For Each ped As Ped In PassengerPedGroup
+                ped.CurrentBlip.Remove()
+                ped.RelationshipGroup = 0
+                PassengerPedGroup.Remove(ped)
             Next
-            ModBlip.Remove()
-            If Not PassengerPedGroup.Count = 0 Then
-                For Each ped As Ped In PassengerPedGroup
-                    ped.CurrentBlip.Remove()
-                    ped.RelationshipGroup = 0
-                    PassengerPedGroup.Remove(ped)
-                Next
-            End If
-            If Not LeavedPassengerPedGroup.Count = 0 Then
-                For Each ped As Ped In LeavedPassengerPedGroup
-                    ped.CurrentBlip.Remove()
-                    ped.RelationshipGroup = 0
-                    LeavedPassengerPedGroup.Remove(ped)
-                Next
-            End If
-            PassengerPedGroup.Clear()
-            LeavedPassengerPedGroup.Clear()
-        Catch ex As Exception
-            Logger.Log(String.Format("(BusSim_Aborted): {0} {1}", ex.Message, ex.StackTrace))
-        End Try
+        End If
+        If Not LeavedPassengerPedGroup.Count = 0 Then
+            For Each ped As Ped In LeavedPassengerPedGroup
+                ped.CurrentBlip.Remove()
+                ped.RelationshipGroup = 0
+                LeavedPassengerPedGroup.Remove(ped)
+            Next
+        End If
+        PassengerPedGroup.Clear()
+        LeavedPassengerPedGroup.Clear()
     End Sub
 
     Private Sub MainMenu_OnItemSelect(sender As UIMenu, selectedItem As UIMenuItem, index As Integer) Handles MainMenu.OnItemSelect
@@ -386,6 +383,7 @@ Public Class BusSim
                 PlayerOriginalPosition = Game.Player.Character.Position
                 PlayerOriginalRotation = Game.Player.Character.Rotation
                 Game.Player.Character.Position = CurrentRoute.PlayerSpawnPoint
+                Game.Player.Character.Task.WarpIntoVehicle(Bus, VehicleSeat.Driver)
 
                 For Each station As Station In CurrentRoute.Stations
                     Dim b As Blip = World.CreateBlip(station.StationCoords)
@@ -434,9 +432,11 @@ Public Class BusSim
         End Try
     End Sub
 
-    Public Sub DrawMarker(position As Vector3)
+    Public Sub DrawMarker(position As Vector3, Optional size As Vector3 = Nothing, Optional color As Color = Nothing)
         Dim p As New Vector3(position.X, position.Y, position.Z - 1.0F)
-        World.DrawMarker(MarkerType.VerticalCylinder, p, p, Vector3.Zero, New Vector3(2.0F, 2.0F, 3.0F), Color.Yellow)
+        If size = Nothing Then size = New Vector3(2.0F, 2.0F, 3.0F)
+        If color = Nothing Then color = Color.Yellow
+        World.DrawMarker(MarkerType.VerticalCylinder, p, p, Vector3.Zero, size, color)
     End Sub
 
     Public Sub UpdateTimerBars()
@@ -461,6 +461,37 @@ Public Class BusSim
             _timerPool.Draw()
         Catch ex As Exception
             Logger.Log(String.Format("(UpdateTimerBars): {0} {1}", ex.Message, ex.StackTrace))
+        End Try
+    End Sub
+
+    Public Sub DrawSeat()
+        Try
+            Dim SRMR As SizeF = UIMenu.GetScreenResolutionMaintainRatio
+            Dim SZB As Point = UIMenu.GetSafezoneBounds
+            Dim X As Integer = 500
+            Dim Y As Integer = 200
+            Dim BusLayout As New UIResRectangle(New Point(((X - SZB.X) - 1), (((Convert.ToInt32(SRMR.Height) - SZB.Y) - Y) - 4)), New Size(42, 190), Color.FromArgb(200, 0, 0, 0)) : BusLayout.Draw()
+            Dim BusNum As New UIResRectangle(New Point(BusLayout.Position.X + 1, BusLayout.Position.Y + 1), New Size(40, 25), Color.Orange) : BusNum.Draw()
+            Dim busText As New UIResText(CurrentRoute.RouteNumber, New Point(BusNum.Position.X + (BusNum.Size.Width / 2), BusNum.Position.Y), 0.3F, Color.White, GTA.Font.ChaletLondon, UIResText.Alignment.Centered) : busText.Outline = True : busText.Draw()
+
+            Dim SD As New UIResRectangle(New Point(BusNum.Position.X + 1, BusNum.Position.Y + BusNum.Size.Height + 2), New Size(18, 18), If(Bus.IsSeatFree(VehicleSeat.Driver), Color.LightGreen, Color.White)) : SD.Draw()
+            Dim SP As New UIResRectangle(New Point(BusNum.Position.X + 22, BusNum.Position.Y + BusNum.Size.Height + 2), New Size(18, 18), If(Bus.IsSeatFree(VehicleSeat.Passenger), Color.LightGreen, Color.White)) : SP.Draw()
+            Dim SLR As New UIResRectangle(New Point(BusNum.Position.X + 1, BusNum.Position.Y + BusNum.Size.Height + 22), New Size(18, 18), If(Bus.IsSeatFree(VehicleSeat.LeftRear), Color.LightGreen, Color.White)) : SLR.Draw()
+            Dim SRR As New UIResRectangle(New Point(BusNum.Position.X + 22, BusNum.Position.Y + BusNum.Size.Height + 22), New Size(18, 18), If(Bus.IsSeatFree(VehicleSeat.RightRear), Color.LightGreen, Color.White)) : SRR.Draw()
+            Dim SE1 As New UIResRectangle(New Point(BusNum.Position.X + 1, BusNum.Position.Y + BusNum.Size.Height + 42), New Size(18, 18), If(Bus.IsSeatFree(VehicleSeat.ExtraSeat1), Color.LightGreen, Color.White)) : SE1.Draw()
+            Dim SE2 As New UIResRectangle(New Point(BusNum.Position.X + 22, BusNum.Position.Y + BusNum.Size.Height + 42), New Size(18, 18), If(Bus.IsSeatFree(VehicleSeat.ExtraSeat2), Color.LightGreen, Color.White)) : SE2.Draw()
+            Dim SE3 As New UIResRectangle(New Point(BusNum.Position.X + 1, BusNum.Position.Y + BusNum.Size.Height + 62), New Size(18, 18), If(Bus.IsSeatFree(VehicleSeat.ExtraSeat3), Color.LightGreen, Color.White)) : SE3.Draw()
+            Dim SE4 As New UIResRectangle(New Point(BusNum.Position.X + 22, BusNum.Position.Y + BusNum.Size.Height + 62), New Size(18, 18), If(Bus.IsSeatFree(VehicleSeat.ExtraSeat4), Color.LightGreen, Color.White)) : SE4.Draw()
+            Dim SE5 As New UIResRectangle(New Point(BusNum.Position.X + 1, BusNum.Position.Y + BusNum.Size.Height + 82), New Size(18, 18), If(Bus.IsSeatFree(VehicleSeat.ExtraSeat5), Color.LightGreen, Color.White)) : SE5.Draw()
+            Dim SE6 As New UIResRectangle(New Point(BusNum.Position.X + 22, BusNum.Position.Y + BusNum.Size.Height + 82), New Size(18, 18), If(Bus.IsSeatFree(VehicleSeat.ExtraSeat6), Color.LightGreen, Color.White)) : SE6.Draw()
+            Dim SE7 As New UIResRectangle(New Point(BusNum.Position.X + 1, BusNum.Position.Y + BusNum.Size.Height + 102), New Size(18, 18), If(Bus.IsSeatFree(VehicleSeat.ExtraSeat7), Color.LightGreen, Color.White)) : SE7.Draw()
+            Dim SE8 As New UIResRectangle(New Point(BusNum.Position.X + 22, BusNum.Position.Y + BusNum.Size.Height + 102), New Size(18, 18), If(Bus.IsSeatFree(VehicleSeat.ExtraSeat8), Color.LightGreen, Color.White)) : SE8.Draw()
+            Dim SE9 As New UIResRectangle(New Point(BusNum.Position.X + 1, BusNum.Position.Y + BusNum.Size.Height + 122), New Size(18, 18), If(Bus.IsSeatFree(VehicleSeat.ExtraSeat9), Color.LightGreen, Color.White)) : SE9.Draw()
+            Dim SE10 As New UIResRectangle(New Point(BusNum.Position.X + 22, BusNum.Position.Y + BusNum.Size.Height + 122), New Size(18, 18), If(Bus.IsSeatFree(VehicleSeat.ExtraSeat10), Color.LightGreen, Color.White)) : SE10.Draw()
+            Dim SE11 As New UIResRectangle(New Point(BusNum.Position.X + 1, BusNum.Position.Y + BusNum.Size.Height + 142), New Size(18, 18), If(Bus.IsSeatFree(VehicleSeat.ExtraSeat11), Color.LightGreen, Color.White)) : SE11.Draw()
+            Dim SE12 As New UIResRectangle(New Point(BusNum.Position.X + 22, BusNum.Position.Y + BusNum.Size.Height + 142), New Size(18, 18), If(Bus.IsSeatFree(VehicleSeat.ExtraSeat12), Color.LightGreen, Color.White)) : SE12.Draw()
+        Catch ex As Exception
+            Logger.Log(String.Format("(DrawSeat): {0} {1}", ex.Message, ex.StackTrace))
         End Try
     End Sub
 

@@ -3,7 +3,6 @@ Imports System.Runtime.CompilerServices
 Imports GTA.Native
 Imports INMNativeUI
 Imports GTA.Math
-Imports BusSimulatorVHelper
 
 Module Helper
 
@@ -24,60 +23,55 @@ Module Helper
 
     <Extension()>
     Public Function GetEmptySeat(ByVal vehicle As Vehicle) As VehicleSeat
-        If vehicle.IsSeatFree(VehicleSeat.RightRear) Then
-            Return VehicleSeat.RightRear
+        If vehicle.IsSeatFree(VehicleSeat.Passenger) Then
+            Return VehicleSeat.Passenger
         Else
             If vehicle.IsSeatFree(VehicleSeat.LeftRear) Then
                 Return VehicleSeat.LeftRear
             Else
-                If vehicle.IsSeatFree(VehicleSeat.ExtraSeat1) Then
-                    Return VehicleSeat.ExtraSeat1
+                If vehicle.IsSeatFree(VehicleSeat.RightRear) Then
+                    Return VehicleSeat.RightRear
                 Else
-                    Return VehicleSeat.ExtraSeat2
-                End If
-            End If
-        End If
-    End Function
-
-    <Extension()>
-    Public Function GetEmptyExtraSeat(ByVal vehicle As Vehicle, originSeat As VehicleSeat) As VehicleSeat
-        If vehicle.IsSeatFree(VehicleSeat.ExtraSeat12) Then
-            Return VehicleSeat.ExtraSeat12
-        Else
-            If vehicle.IsSeatFree(VehicleSeat.ExtraSeat11) Then
-                Return VehicleSeat.ExtraSeat11
-            Else
-                If vehicle.IsSeatFree(VehicleSeat.ExtraSeat10) Then
-                    Return VehicleSeat.ExtraSeat10
-                Else
-                    If vehicle.IsSeatFree(VehicleSeat.ExtraSeat9) Then
-                        Return VehicleSeat.ExtraSeat9
+                    If vehicle.IsSeatFree(VehicleSeat.ExtraSeat1) Then
+                        Return VehicleSeat.ExtraSeat1
                     Else
-                        If vehicle.IsSeatFree(VehicleSeat.ExtraSeat8) Then
-                            Return VehicleSeat.ExtraSeat8
+                        If vehicle.IsSeatFree(VehicleSeat.ExtraSeat2) Then
+                            Return VehicleSeat.ExtraSeat2
                         Else
-                            If vehicle.IsSeatFree(VehicleSeat.ExtraSeat7) Then
-                                Return VehicleSeat.ExtraSeat7
+                            If vehicle.IsSeatFree(VehicleSeat.ExtraSeat3) Then
+                                Return VehicleSeat.ExtraSeat3
                             Else
-                                If vehicle.IsSeatFree(VehicleSeat.ExtraSeat6) Then
-                                    Return VehicleSeat.ExtraSeat6
+                                If vehicle.IsSeatFree(VehicleSeat.ExtraSeat4) Then
+                                    Return VehicleSeat.ExtraSeat4
                                 Else
                                     If vehicle.IsSeatFree(VehicleSeat.ExtraSeat5) Then
                                         Return VehicleSeat.ExtraSeat5
                                     Else
-                                        If vehicle.IsSeatFree(VehicleSeat.ExtraSeat4) Then
-                                            Return VehicleSeat.ExtraSeat4
+                                        If vehicle.IsSeatFree(VehicleSeat.ExtraSeat6) Then
+                                            Return VehicleSeat.ExtraSeat6
                                         Else
-                                            If vehicle.IsSeatFree(VehicleSeat.ExtraSeat3) Then
-                                                Return VehicleSeat.ExtraSeat3
+                                            If vehicle.IsSeatFree(VehicleSeat.ExtraSeat7) Then
+                                                Return VehicleSeat.ExtraSeat7
                                             Else
-                                                If vehicle.IsSeatFree(VehicleSeat.ExtraSeat2) Then
-                                                    Return VehicleSeat.ExtraSeat2
+                                                If vehicle.IsSeatFree(VehicleSeat.ExtraSeat8) Then
+                                                    Return VehicleSeat.ExtraSeat8
                                                 Else
-                                                    If vehicle.IsSeatFree(VehicleSeat.ExtraSeat1) Then
-                                                        Return VehicleSeat.ExtraSeat1
+                                                    If vehicle.IsSeatFree(VehicleSeat.ExtraSeat9) Then
+                                                        Return VehicleSeat.ExtraSeat9
                                                     Else
-                                                        Return originSeat
+                                                        If vehicle.IsSeatFree(VehicleSeat.ExtraSeat10) Then
+                                                            Return VehicleSeat.ExtraSeat10
+                                                        Else
+                                                            If vehicle.IsSeatFree(VehicleSeat.ExtraSeat11) Then
+                                                                Return VehicleSeat.ExtraSeat11
+                                                            Else
+                                                                If vehicle.IsSeatFree(VehicleSeat.ExtraSeat12) Then
+                                                                    Return VehicleSeat.ExtraSeat12
+                                                                Else
+                                                                    Return VehicleSeat.Any
+                                                                End If
+                                                            End If
+                                                        End If
                                                     End If
                                                 End If
                                             End If
@@ -90,27 +84,6 @@ Module Helper
                 End If
             End If
         End If
-    End Function
-
-    <Extension()>
-    Public Function GetEmptySeatString(ByVal vehicle As Vehicle) As String
-        Dim s1, s2, s3, s4, s5, s6, s7, s8, s9, s10, s11, s12, s13, s14, s15 As Boolean
-        s1 = vehicle.IsSeatFree(VehicleSeat.Passenger)
-        s2 = vehicle.IsSeatFree(VehicleSeat.LeftRear)
-        s3 = vehicle.IsSeatFree(VehicleSeat.RightRear)
-        s4 = vehicle.IsSeatFree(VehicleSeat.ExtraSeat1)
-        s5 = vehicle.IsSeatFree(VehicleSeat.ExtraSeat2)
-        s6 = vehicle.IsSeatFree(VehicleSeat.ExtraSeat3)
-        s7 = vehicle.IsSeatFree(VehicleSeat.ExtraSeat4)
-        s8 = vehicle.IsSeatFree(VehicleSeat.ExtraSeat5)
-        s9 = vehicle.IsSeatFree(VehicleSeat.ExtraSeat6)
-        s10 = vehicle.IsSeatFree(VehicleSeat.ExtraSeat7)
-        s11 = vehicle.IsSeatFree(VehicleSeat.ExtraSeat8)
-        s12 = vehicle.IsSeatFree(VehicleSeat.ExtraSeat9)
-        s13 = vehicle.IsSeatFree(VehicleSeat.ExtraSeat10)
-        s14 = vehicle.IsSeatFree(VehicleSeat.ExtraSeat11)
-        s15 = vehicle.IsSeatFree(VehicleSeat.ExtraSeat12)
-        Return $"1/P: {s1} 2/RL: {s2} 3/RR: {s3} 4: {s4} 5: {s5} 6: {s6} 7: {s7} 8: {s8} 9: {s9} 10: {s10} 11: {s11} 12: {s12}"
     End Function
 
     <Extension()>

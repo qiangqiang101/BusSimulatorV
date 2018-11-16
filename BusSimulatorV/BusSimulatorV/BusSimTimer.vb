@@ -1,10 +1,12 @@
 ﻿Imports GTA
 Imports BusSimulatorV.BusSim
+Imports System.Drawing
 
 Public Class BusSimTimer
     Inherits Script
 
     Dim rd As New Random()
+    Public Shared missionCompleteSC As Integer = 0, missionCompleteSF As Scaleform
 
     Public Sub New()
 
@@ -42,9 +44,20 @@ Public Class BusSimTimer
         End If
     End Sub
 
+    Private Sub PlayMissionCompleteScaleform()
+        If missionCompleteSF Is Nothing Or missionCompleteSC <= 0 Then
+            missionCompleteSC = 0
+            Return
+        Else
+            missionCompleteSC -= 1
+            missionCompleteSF.DrawMissionCompletedScaleform(New PointF(0.5, 0.5), New SizeF(0.2021, 0.5111), Color.FromArgb(0, 255, 255, 255))
+        End If
+    End Sub
+
     Private Sub BusSimTimer_Tick(sender As Object, e As EventArgs) Handles Me.Tick
         FixPedEnterBus()
         PedAutoShufferingSeat()
+        PlayMissionCompleteScaleform()
     End Sub
 End Class
 

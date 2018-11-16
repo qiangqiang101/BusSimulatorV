@@ -3,6 +3,7 @@ Imports System.Runtime.CompilerServices
 Imports GTA.Native
 Imports INMNativeUI
 Imports GTA.Math
+Imports System.Drawing
 
 Module Helper
 
@@ -202,4 +203,114 @@ Module Helper
     Public Function IsGameUIVisible() As Boolean
         Return Native.Function.Call(Of Boolean)(Hash._0xAF754F20EB5CD51A)
     End Function
+
+    Public Sub PlayMissionCompleteAudio(flags As MissionCompleteAudioFlags)
+        Select Case flags
+            Case MissionCompleteAudioFlags.Dead
+                Native.Function.Call(Hash.PLAY_MISSION_COMPLETE_AUDIO, "DEAD")
+            Case MissionCompleteAudioFlags.MichaelSmall01
+                Native.Function.Call(Hash.PLAY_MISSION_COMPLETE_AUDIO, "MICHAEL_SMALL_01")
+            Case MissionCompleteAudioFlags.MichaelBig01
+                Native.Function.Call(Hash.PLAY_MISSION_COMPLETE_AUDIO, "MICHAEL_BIG_01")
+            Case MissionCompleteAudioFlags.FranklinSmall01
+                Native.Function.Call(Hash.PLAY_MISSION_COMPLETE_AUDIO, "FRANKLIN_SMALL_01")
+            Case MissionCompleteAudioFlags.FranklinBig01
+                Native.Function.Call(Hash.PLAY_MISSION_COMPLETE_AUDIO, "FRANKLIN_BIG_01")
+            Case MissionCompleteAudioFlags.GenericFailed
+                Native.Function.Call(Hash.PLAY_MISSION_COMPLETE_AUDIO, "GENERIC_FAILED")
+            Case MissionCompleteAudioFlags.TrevorSmall01
+                Native.Function.Call(Hash.PLAY_MISSION_COMPLETE_AUDIO, "TREVOR_SMALL_01")
+            Case MissionCompleteAudioFlags.TrevorBig01
+                Native.Function.Call(Hash.PLAY_MISSION_COMPLETE_AUDIO, "TREVOR_BIG_01")
+        End Select
+        While (Not Native.Function.Call(Of Boolean)(Hash.IS_MISSION_COMPLETE_PLAYING))
+            Script.Yield()
+        End While
+    End Sub
+
+    Public Enum MissionCompleteAudioFlags
+        Dead
+        MichaelSmall01
+        MichaelBig01
+        FranklinSmall01
+        FranklinBig01
+        GenericFailed
+        TrevorSmall01
+        TrevorBig01
+    End Enum
+
+    <Extension()>
+    Public Sub PlayMissionCompleteScaleform(scaleform As Scaleform, title As String, subtitle As String, medal As MissionCompleteScaleformMedal, percent As Integer, time As Integer, ParamArray objectives As ObjectiveItem())
+        scaleform = New Scaleform("MISSION_COMPLETE")
+        Dim timeout As Integer = time
+        Dim start = DateTime.Now
+        'While (Not scaleform.IsLoaded) AndAlso DateTime.Now.Subtract(start).TotalMilliseconds < timeout
+        '    Script.Yield()
+        'End While
+        scaleform.CallFunction("SET_MISSION_TITLE", "", title)
+        Dim objIndex As Integer = 0
+        For Each obj As ObjectiveItem In objectives
+            Select Case obj.Type
+                Case ObjectiveItem.ObjectiveItemType.Time
+                    scaleform.CallFunction("SET_DATA_SLOT", objIndex, obj.CheckboxChecked, True, True, 2, CInt(obj.RightLabel), obj.Title)
+                Case ObjectiveItem.ObjectiveItemType.Number
+                    scaleform.CallFunction("SET_DATA_SLOT", objIndex, obj.CheckboxChecked, 2, CSng(obj.RightLabel), obj.Title)
+                Case ObjectiveItem.ObjectiveItemType.Task
+                    scaleform.CallFunction("SET_DATA_SLOT", objIndex, obj.CheckboxChecked, obj.RightLabel.ToString.Split("/")(0), obj.RightLabel.ToString.Split("/")(1), obj.Title)
+                Case ObjectiveItem.ObjectiveItemType.Percentage
+                    scaleform.CallFunction("SET_DATA_SLOT", objIndex, obj.CheckboxChecked, 2, CInt(obj.RightLabel), obj.Title)
+                Case ObjectiveItem.ObjectiveItemType.MoneyMonetized
+                    scaleform.CallFunction("SET_DATA_SLOT", objIndex, obj.CheckboxChecked, 8, CInt(obj.RightLabel), obj.Title)
+                Case ObjectiveItem.ObjectiveItemType.MoneyDemonetized
+                    scaleform.CallFunction("SET_DATA_SLOT", objIndex, obj.CheckboxChecked, 8, CInt(obj.RightLabel), obj.Title)
+                Case ObjectiveItem.ObjectiveItemType.RP
+                    scaleform.CallFunction("SET_DATA_SLOT", objIndex, obj.CheckboxChecked, 8, CInt(obj.RightLabel), obj.Title)
+                Case ObjectiveItem.ObjectiveItemType.Objective
+                    scaleform.CallFunction("SET_DATA_SLOT", objIndex, obj.CheckboxChecked, obj.Title)
+            End Select
+            objIndex += 1
+        Next
+        scaleform.CallFunction("SET_TOTAL", CInt(medal), percent, subtitle)
+        scaleform.CallFunction("DRAW_MENU_LIST")
+    End Sub
+
+    <Extension()>
+    Public Sub DrawMissionCompletedScaleform(scaleform As Scaleform, position As PointF, size As SizeF, color As Color)
+        Native.Function.Call(Hash.DRAW_SCALEFORM_MOVIE, scaleform.Handle, position.X, position.Y, size.Width, size.Height, CInt(color.R), CInt(color.G), CInt(color.B), CInt(color.A), 0)
+    End Sub
+
+    Public Enum MissionCompleteScaleformMedal
+        Gold = 1
+        Silver
+        Bronze
+        Skull
+        Unk
+    End Enum
 End Module
+
+Public Class ObjectiveItem
+
+    Public Property Type As ObjectiveItemType
+    Public Property Title As String
+    Public Property RightLabel As Object
+    Public CheckboxChecked As Integer
+
+    Public Enum ObjectiveItemType
+        Time
+        Number
+        Task
+        Percentage
+        MoneyMonetized
+        MoneyDemonetized
+        RP
+        Objective
+    End Enum
+
+    Public Sub New(_type As ObjectiveItemType, _title As String, _rightLabel As Object, _checked As Boolean)
+        Type = _type
+        Title = _title
+        RightLabel = _rightLabel
+        CheckboxChecked = If(_checked, 1, 0)
+    End Sub
+
+End Class

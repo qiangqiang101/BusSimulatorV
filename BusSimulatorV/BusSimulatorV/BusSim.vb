@@ -218,8 +218,9 @@ Public Class BusSim
                     itemPlay.Text = "Start Mission"
                     itemPlay.Enabled = True
                     RemoveTimerBars()
-                    BigMessageThread.MessageInstance.ShowMissionPassedMessage("Mission Failed")
-                    UI.ShowSubtitle("You abandoned your bus.")
+                    PlayMissionCompleteAudio(MissionCompleteAudioFlags.GenericFailed)
+                    Effects.Start(ScreenEffect.DeathFailMpDark, 5000)
+                    BigMessageThread.MessageInstance.ShowColoredShard("Mission Failed", $"You abandoned your {Bus.FriendlyName}.", HudColor.HUD_COLOUR_BLACK, HudColor.HUD_COLOUR_RED, 5000)
                 Catch ex As Exception
                     Logger.Log(String.Format("(Abandoned Bus): {0} {1}", ex.Message, ex.StackTrace))
                 End Try
@@ -249,7 +250,10 @@ Public Class BusSim
                     itemPlay.Text = "Start Mission"
                     itemPlay.Enabled = True
                     RemoveTimerBars()
-                    BigMessageThread.MessageInstance.ShowMissionPassedMessage("Mission Passed")
+                    PlayMissionCompleteAudio(MissionCompleteAudioFlags.FranklinBig01)
+                    Effects.Start(ScreenEffect.SuccessNeutral, 5000)
+                    BigMessageThread.MessageInstance.ShowColoredShard("Mission Passed", $"You completed {CurrentRoute.RouteName}.", HudColor.HUD_COLOUR_BLACK, HudColor.HUD_COLOUR_GOLD, 5000)
+
                     Bus.RemoveAllExtras
                     Bus.OpenDoor(VehicleDoor.FrontLeftDoor, False, False)
                     Bus.OpenDoor(VehicleDoor.FrontRightDoor, False, False)
@@ -258,7 +262,9 @@ Public Class BusSim
                 Else
                     b = BlipDict.Item(CurrentStationIndex)
                     b.ShowRoute = True
-                    If Not PassengerPedGroup.Count = 0 Then
+                    Dim random As New Random()
+                    Dim leaveCount As Integer = random.Next(0, 3)
+                    If Not PassengerPedGroup.Count = 0 AndAlso leaveCount >= 1 Then
                         If Not Bus.Position.DistanceTo(CurrentRoute.Stations(0).StationCoords) <= 5.0F Then
                             Dim ped As Ped = PassengerPedGroup(New Random().Next(0, PassengerPedGroup.Count))
                             LeavedPassengerPedGroup.Add(ped)
@@ -266,7 +272,15 @@ Public Class BusSim
                             PassengerPedGroup.Remove(ped)
                         End If
                     End If
-                    If Not PassengerPedGroup.Count = 0 Then
+                    If Not PassengerPedGroup.Count = 0 AndAlso leaveCount >= 2 Then
+                        If Not Bus.Position.DistanceTo(CurrentRoute.Stations(0).StationCoords) <= 5.0F Then
+                            Dim ped As Ped = PassengerPedGroup(New Random().Next(0, PassengerPedGroup.Count))
+                            LeavedPassengerPedGroup.Add(ped)
+                            ped.Task.ClearAll()
+                            PassengerPedGroup.Remove(ped)
+                        End If
+                    End If
+                    If Not PassengerPedGroup.Count = 0 AndAlso leaveCount >= 3 Then
                         If Not Bus.Position.DistanceTo(CurrentRoute.Stations(0).StationCoords) <= 5.0F Then
                             Dim ped As Ped = PassengerPedGroup(New Random().Next(0, PassengerPedGroup.Count))
                             LeavedPassengerPedGroup.Add(ped)
@@ -546,6 +560,13 @@ Public Class BusSim
     End Sub
 
     Private Sub BusSim_KeyUp(sender As Object, e As KeyEventArgs) Handles Me.KeyUp
+        'If e.KeyCode = Keys.B Then
+        '    PlayMissionCompleteAudio(MissionCompleteAudioFlags.FranklinBig01)
+        '    Effects.Start(ScreenEffect.SuccessNeutral, 5000)
+        '    BigMessageThread.MessageInstance.ShowColoredShard("Mission Passed", "You completed the bus route.", HudColor.HUD_COLOUR_BLACK, HudColor.HUD_COLOUR_GOLD, 5000)
+        '    BusSimTimer.missionCompleteSF.PlayMissionCompleteScaleform("2 Strawberry / Morningwood", "Completion - Gold", MissionCompleteScaleformMedal.Gold, 100, 5000, New ObjectiveItem(ObjectiveItem.ObjectiveItemType.Task, "Stations Completed", "30/30", True), New ObjectiveItem(ObjectiveItem.ObjectiveItemType.Time, "Time Spent", 9999, True), New ObjectiveItem(ObjectiveItem.ObjectiveItemType.Number, "Passengers", 100, True), New ObjectiveItem(ObjectiveItem.ObjectiveItemType.MoneyMonetized, "Money Earned", 999, True))
+        '    BusSimTimer.missionCompleteSC = 5000
+        'End If
         If IsInGame Then
             If e.KeyCode = FrontDoorKey2 AndAlso Game.Player.Character.IsInVehicle(Bus) Then
                 If Bus.IsDoorOpen(VehicleDoor.FrontLeftDoor) Then Bus.CloseDoor(VehicleDoor.FrontLeftDoor, False) Else Bus.OpenDoor(VehicleDoor.FrontLeftDoor, False, False)

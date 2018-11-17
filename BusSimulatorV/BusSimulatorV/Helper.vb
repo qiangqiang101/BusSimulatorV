@@ -204,6 +204,27 @@ Module Helper
         Return Native.Function.Call(Of Boolean)(Hash._0xAF754F20EB5CD51A)
     End Function
 
+    Private PedSeat As New Dictionary(Of Ped, VehicleSeat)
+    <Extension()>
+    Public Function Seat(ped As Ped) As VehicleSeat
+        Return PedSeat.Item(ped)
+    End Function
+
+    <Extension()>
+    Public Sub Seat(ped As Ped, seat As VehicleSeat)
+        PedSeat.Add(ped, seat)
+    End Sub
+
+    <Extension()>
+    Public Sub ClearSeat(ped As Ped)
+        If ped.DoesPedHasSeatInMemory Then PedSeat.Remove(ped)
+    End Sub
+
+    <Extension()>
+    Private Function DoesPedHasSeatInMemory(ped As Ped) As Boolean
+        Return PedSeat.ContainsKey(ped)
+    End Function
+
     Public Sub PlayMissionCompleteAudio(flags As MissionCompleteAudioFlags)
         Select Case flags
             Case MissionCompleteAudioFlags.Dead

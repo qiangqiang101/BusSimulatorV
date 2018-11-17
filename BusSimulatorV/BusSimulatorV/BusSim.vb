@@ -120,6 +120,7 @@ Public Class BusSim
             RouteMenu = New UIMenu("", "ROUTE SELECTION", New Point(0, -107))
             RouteMenu.SetBannerType(Rectangle)
             RouteMenu.MouseEdgeEnabled = False
+            RouteMenu.AddInstructionalButton(New InstructionalButton(GTA.Control.Reload, "Refresh"))
             _menuPool.Add(RouteMenu)
 
             For Each xmlFile As String In Directory.GetFiles("scripts\BusSimulatorV\Route", "*.xml")
@@ -129,7 +130,7 @@ Public Class BusSim
                     itemMRoute = New UIMenuItem(Path.GetFileNameWithoutExtension(xmlFile))
                     With itemMRoute
                         .SubString1 = xmlFile
-                        .Description = $"Author: {br.Author}~n~Version: {br.Version}~n~Description: {br.Description}"
+                        .Description = $"Author: {br.Author}~n~Version: {br.Version}~n~Description: {br.Description}                                                                                                                                                                                                                                    "
                     End With
                     RouteMenu.AddItem(itemMRoute)
                 End If
@@ -138,6 +139,29 @@ Public Class BusSim
             MainMenu.BindMenuToItem(RouteMenu, itemRoute)
         Catch ex As Exception
             Logger.Log(String.Format("(CreateRouteMenu): {0} {1}", ex.Message, ex.StackTrace))
+        End Try
+    End Sub
+
+    Public Sub RefreshRouteMenu()
+        Try
+            RouteMenu.MenuItems.Clear()
+
+            For Each xmlFile As String In Directory.GetFiles("scripts\BusSimulatorV\Route", "*.xml")
+                If File.Exists(xmlFile) Then
+                    Dim br As BusRoute = New BusRoute(xmlFile)
+                    br = br.ReadFromFile
+                    itemMRoute = New UIMenuItem(Path.GetFileNameWithoutExtension(xmlFile))
+                    With itemMRoute
+                        .SubString1 = xmlFile
+                        .Description = $"Author: {br.Author}~n~Version: {br.Version}~n~Description: {br.Description}                                                                                                                                                                                                                                    "
+                    End With
+                    RouteMenu.AddItem(itemMRoute)
+                End If
+            Next
+            RouteMenu.RefreshIndex()
+            MainMenu.BindMenuToItem(RouteMenu, itemRoute)
+        Catch ex As Exception
+            Logger.Log(String.Format("(RefreshRouteMenu): {0} {1}", ex.Message, ex.StackTrace))
         End Try
     End Sub
 
@@ -177,6 +201,12 @@ Public Class BusSim
             Game.DisableControlThisFrame(0, GTA.Control.Jump)
             Game.DisableControlThisFrame(0, GTA.Control.Cover)
             Game.DisableControlThisFrame(0, GTA.Control.Context)
+        End If
+
+        If RouteMenu.Visible Then
+            If Game.IsControlJustReleased(0, GTA.Control.Reload) Then
+                RefreshRouteMenu()
+            End If
         End If
 
         If IsInGame Then
@@ -226,13 +256,41 @@ Public Class BusSim
                 End Try
             End If
 
+            If Bus.IsDead Then 'Destroyed bus
+                Try
+                    For Each blip As Blip In BlipList
+                        blip.Remove()
+                    Next
+                    CurrentStationIndex = 0
+                    For Each ped As Ped In PassengerPedGroup
+                        LeavedPassengerPedGroup.Add(ped)
+                        ped.Task.ClearAll()
+                        PassengerPedGroup.Remove(ped)
+                    Next
+                    PassengerPedGroup.Clear()
+                    LeavedPassengerPedGroup.Clear()
+
+                    IsInGame = False
+                    BlipDict.Clear()
+                    BlipList.Clear()
+                    itemPlay.Text = "Start Mission"
+                    itemPlay.Enabled = True
+                    RemoveTimerBars()
+                    PlayMissionCompleteAudio(MissionCompleteAudioFlags.GenericFailed)
+                    Effects.Start(ScreenEffect.DeathFailMpDark, 5000)
+                    BigMessageThread.MessageInstance.ShowColoredShard("Mission Failed", $"You blowed up your {Bus.FriendlyName}.", HudColor.HUD_COLOUR_BLACK, HudColor.HUD_COLOUR_RED, 5000)
+                Catch ex As Exception
+                    Logger.Log(String.Format("(Destroyed Bus): {0} {1}", ex.Message, ex.StackTrace))
+                End Try
+            End If
+
             If Bus.Position.DistanceTo(CurrentRoute.Stations(CurrentStationIndex).StationCoords) <= 7.5F Then
                 Dim b As Blip = BlipDict.Item(CurrentStationIndex)
                 BlipDict.Remove(CurrentStationIndex)
                 b.Remove()
                 If Not CurrentStationIndex = CurrentRoute.TotalStation Then CurrentStationIndex += 1
 
-                If CurrentStationIndex = CurrentRoute.TotalStation Then
+                If (CurrentStationIndex = CurrentRoute.TotalStation) Then
                     For Each ped As Ped In Bus.Passengers
                         If Not ped = Game.Player.Character Then
                             LastStationPassengerPedGroup.Add(ped)
@@ -258,12 +316,18 @@ Public Class BusSim
                     Bus.OpenDoor(VehicleDoor.FrontLeftDoor, False, False)
                     Bus.OpenDoor(VehicleDoor.FrontRightDoor, False, False)
                     Bus.OpenDoor(VehicleDoor.BackLeftDoor, False, False)
-                    Bus.OpenDoor(VehicleDoor.BackRightDoor, False, false)
+                    Bus.OpenDoor(VehicleDoor.BackRightDoor, False, False)
                 Else
                     b = BlipDict.Item(CurrentStationIndex)
                     b.ShowRoute = True
                     Dim random As New Random()
-                    Dim leaveCount As Integer = random.Next(0, 3)
+                    Dim leaveCount As Integer = random.Next(0, 2)
+                    If Not Bus.IsSeatFree(VehicleSeat.Passenger) Then
+                        Dim ped As Ped = Bus.GetPedOnSeat(VehicleSeat.Passenger)
+                        LeavedPassengerPedGroup.Add(ped)
+                        ped.Task.ClearAll()
+                        PassengerPedGroup.Remove(ped)
+                    End If
                     If Not PassengerPedGroup.Count = 0 AndAlso leaveCount >= 1 Then
                         If Not Bus.Position.DistanceTo(CurrentRoute.Stations(0).StationCoords) <= 5.0F Then
                             Dim ped As Ped = PassengerPedGroup(New Random().Next(0, PassengerPedGroup.Count))
@@ -280,22 +344,17 @@ Public Class BusSim
                             PassengerPedGroup.Remove(ped)
                         End If
                     End If
-                    If Not PassengerPedGroup.Count = 0 AndAlso leaveCount >= 3 Then
-                        If Not Bus.Position.DistanceTo(CurrentRoute.Stations(0).StationCoords) <= 5.0F Then
-                            Dim ped As Ped = PassengerPedGroup(New Random().Next(0, PassengerPedGroup.Count))
-                            LeavedPassengerPedGroup.Add(ped)
-                            ped.Task.ClearAll()
-                            PassengerPedGroup.Remove(ped)
-                        End If
-                    End If
                     If Not PassengerPedGroup.Count >= 15 Then
-                        Dim pedCount As Integer = 0, maxPed As Integer = 5
+                        Dim pedCount As Integer = 0, maxPed As Integer = 3
                         For Each ped As Ped In World.GetNearbyPeds(Game.Player.Character, 15.0F)
                             If pedCount < maxPed AndAlso Not ped = Game.Player.Character AndAlso Not ped.IsInVehicle() Then
                                 If Not PassengerPedGroup.Contains(ped) Then
+
                                     ped.StopPedFlee
                                     ped.RelationshipGroup = PedRelationshipGroup
                                     ped.Task.ClearAll()
+                                    ped.AlwaysKeepTask = True
+                                    ped.Seat((Bus.GetEmptySeat - 1) + pedCount)
 
                                     Dim pedblip As Blip = ped.AddBlip
                                     With pedblip
@@ -331,12 +390,13 @@ Public Class BusSim
         End If
 
         If Game.Player.Character.Position.DistanceTo(MenuActivator) <= 2.0 AndAlso Not Game.Player.Character.IsInVehicle Then
+            If Not _menuPool.IsAnyMenuOpen Then
+                DisplayHelpTextThisFrame("Press ~INPUT_CONTEXT~ to work as Bus Driver.")
+            End If
             If Game.IsControlJustReleased(0, GTA.Control.Context) Then
                 MainMenu.Show()
                 MenuCamera = World.CreateCamera(CameraPos, CameraRot, GameplayCamera.FieldOfView)
                 World.RenderingCamera = MenuCamera
-            Else
-                DisplayHelpTextThisFrame("Press ~INPUT_CONTEXT~ to work as Bus Driver.")
             End If
         End If
         'Catch ex As Exception

@@ -9,7 +9,6 @@ Public Class BusSimTimer
     Public Shared missionCompleteSC As Integer = 0, missionCompleteSF As Scaleform
 
     Public Sub New()
-
     End Sub
 
     Private Sub FixPedEnterBus()
@@ -17,9 +16,9 @@ Public Class BusSimTimer
         If Not PassengerPedGroup.Count = 0 AndAlso Not Bus = Nothing Then
             If Bus.IsAnyDoorOpen Then
                 For Each ped As Ped In PassengerPedGroup
-                    If Not ped.IsInVehicle(Bus) Then
+                    If Not ped.IsInVehicle(Bus) AndAlso Not ped.IsRunning Then
                         ped.Task.ClearAll()
-                        ped.Task.EnterVehicle(Bus, Bus.GetEmptySeat, 10000, CSng(rd.Next(1, 3)), EnterBusFlag.None)
+                        If Not Bus.IsSeatFree(ped.Seat) Then ped.Task.EnterVehicle(Bus, Bus.GetEmptySeat, 10000, 2.0, EnterBusFlag.None) Else ped.Task.EnterVehicle(Bus, ped.Seat, 10000, 2.0, EnterBusFlag.None)
                         ped.AlwaysKeepTask = True
                         Script.Wait(500)
                     End If
@@ -39,25 +38,15 @@ Public Class BusSimTimer
                         Case VehicleSeat.Passenger
                             If PassengerPedGroup.Contains(ped) Then ped.Task.WarpIntoVehicle(Bus, Bus.GetEmptyExtraSeat(ped.SeatIndex))
                     End Select
+                    ped.ClearSeat
                 End If
             Next
-        End If
-    End Sub
-
-    Private Sub PlayMissionCompleteScaleform()
-        If missionCompleteSF Is Nothing Or missionCompleteSC <= 0 Then
-            missionCompleteSC = 0
-            Return
-        Else
-            missionCompleteSC -= 1
-            missionCompleteSF.DrawMissionCompletedScaleform(New PointF(0.5, 0.5), New SizeF(0.2021, 0.5111), Color.FromArgb(0, 255, 255, 255))
         End If
     End Sub
 
     Private Sub BusSimTimer_Tick(sender As Object, e As EventArgs) Handles Me.Tick
         FixPedEnterBus()
         PedAutoShufferingSeat()
-        PlayMissionCompleteScaleform()
     End Sub
 End Class
 
@@ -96,11 +85,21 @@ Public Class BusSimTimer2
                     ped.CurrentBlip.Remove()
                     Select Case ped.SeatIndex
                         Case VehicleSeat.ExtraSeat1, VehicleSeat.ExtraSeat2, VehicleSeat.ExtraSeat3, VehicleSeat.ExtraSeat4, VehicleSeat.ExtraSeat5, VehicleSeat.ExtraSeat6, VehicleSeat.ExtraSeat7, VehicleSeat.ExtraSeat8, VehicleSeat.ExtraSeat9, VehicleSeat.ExtraSeat10, VehicleSeat.ExtraSeat11, VehicleSeat.ExtraSeat12
-                            ped.Task.WarpIntoVehicle(Bus, VehicleSeat.Passenger)
-                            Script.Wait(500)
-                        Case VehicleSeat.Passenger
+                            If Bus.IsSeatFree(VehicleSeat.LeftRear) Then
+                                ped.Task.WarpIntoVehicle(Bus, VehicleSeat.LeftRear)
+                            Else
+                                If Bus.IsSeatFree(VehicleSeat.RightRear) Then
+                                    ped.Task.WarpIntoVehicle(Bus, VehicleSeat.RightRear)
+                                Else
+                                    ped.Task.WarpIntoVehicle(Bus, VehicleSeat.Passenger)
+                                End If
+                            End If
+                            'Script.Wait(500)
+                        Case VehicleSeat.Passenger, VehicleSeat.LeftRear, VehicleSeat.RightRear
+                            ped.Task.ClearAll()
                             ped.Task.LeaveVehicle(Bus, False)
                             Script.Wait(500)
+                            LastStationPassengerPedGroup.Remove(ped)
                     End Select
                     ped.RelationshipGroup = 0
                 Next

@@ -4,6 +4,7 @@ Imports GTA.Native
 Imports INMNativeUI
 Imports GTA.Math
 Imports System.Drawing
+Imports System.Media
 
 Module Helper
 
@@ -300,6 +301,33 @@ Module Helper
         Native.Function.Call(Hash.DRAW_SCALEFORM_MOVIE, scaleform.Handle, position.X, position.Y, size.Width, size.Height, CInt(color.R), CInt(color.G), CInt(color.B), CInt(color.A), 0)
     End Sub
 
+    Public Enum Directions
+        YouHaveArrive
+        RecalculatingRoute
+        ProceedTheHighlightingRoute
+        KeepLeft
+        TurnLeft
+        TurnRight
+        KeepRight
+        GoStraight
+        JoinTheFreeway
+        ExitFreeway
+    End Enum
+
+    Public Function GenerateDirectionsToCoord(pos As Vector3) As Directions
+        Dim f4, f5, f6 As New OutputArgument()
+        Native.Function.Call(Hash.GENERATE_DIRECTIONS_TO_COORD, pos.X, pos.Y, pos.Z, True, f4, f5, f6)
+        Dim direction As String = f4.GetResult(Of Single)()
+        Return CInt(direction.Substring(0, 1))
+    End Function
+
+    <Extension()>
+    Public Function IsVehicleFull(vehicle As Vehicle) As Boolean
+        Dim maxSeat As Integer = vehicle.PassengerSeats
+        Dim passengers As Integer = vehicle.Passengers.Count
+        If passengers = maxSeat Then Return True Else Return False
+    End Function
+
     Public Enum MissionCompleteScaleformMedal
         Gold = 1
         Silver
@@ -307,6 +335,20 @@ Module Helper
         Skull
         Unk
     End Enum
+
+    <Extension()>
+    Public Sub MutePed(ped As Ped, mute As Boolean)
+        Native.Function.Call(Hash.STOP_PED_SPEAKING, ped, mute)
+    End Sub
+
+    Public Sub SoundPlayer(waveFile As String, volume As Integer)
+        Using stream As New WaveStream(IO.File.OpenRead(waveFile))
+            stream.Volume = volume
+            Using player As New SoundPlayer(stream)
+                player.Play()
+            End Using
+        End Using
+    End Sub
 End Module
 
 Public Class ObjectiveItem

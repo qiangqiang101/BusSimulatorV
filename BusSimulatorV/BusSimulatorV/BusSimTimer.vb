@@ -14,9 +14,14 @@ Public Class BusSimTimer
     Private Sub FixPedEnterBus()
         On Error Resume Next
         If Not PassengerPedGroup.Count = 0 AndAlso Not Bus = Nothing Then
-            If Bus.IsAnyDoorOpen Then
+            If Bus.IsAnyDoorOpen AndAlso Bus.SpeedMPH = 0 Then
                 For Each ped As Ped In PassengerPedGroup
                     If Not ped.IsInVehicle(Bus) AndAlso Not ped.IsRunning Then
+                        If Bus.IsVehicleFull Then
+                            ped.CurrentBlip.Remove()
+                            PassengerPedGroup.Remove(ped)
+                            Return
+                        End If
                         ped.Task.ClearAll()
                         If Not Bus.IsSeatFree(ped.Seat) Then ped.Task.EnterVehicle(Bus, Bus.GetEmptySeat, 10000, 2.0, EnterBusFlag.None) Else ped.Task.EnterVehicle(Bus, ped.Seat, 10000, 2.0, EnterBusFlag.None)
                         ped.AlwaysKeepTask = True
@@ -47,6 +52,10 @@ Public Class BusSimTimer
     Private Sub BusSimTimer_Tick(sender As Object, e As EventArgs) Handles Me.Tick
         FixPedEnterBus()
         PedAutoShufferingSeat()
+
+        'For Each ped In LeavedPassengerPedGroup
+        '    ped.MutePed(True)
+        'Next
     End Sub
 End Class
 
@@ -63,14 +72,18 @@ Public Class BusSimTimer2
             If Bus.IsAnyDoorOpen Then
                 For Each ped As Ped In LeavedPassengerPedGroup
                     ped.CurrentBlip.Remove()
-                    Select Case ped.SeatIndex
-                        Case VehicleSeat.ExtraSeat1, VehicleSeat.ExtraSeat2, VehicleSeat.ExtraSeat3, VehicleSeat.ExtraSeat4, VehicleSeat.ExtraSeat5, VehicleSeat.ExtraSeat6, VehicleSeat.ExtraSeat7, VehicleSeat.ExtraSeat8, VehicleSeat.ExtraSeat9, VehicleSeat.ExtraSeat10, VehicleSeat.ExtraSeat11, VehicleSeat.ExtraSeat12
-                            ped.Task.WarpIntoVehicle(Bus, VehicleSeat.Passenger)
-                            Script.Wait(500)
-                        Case VehicleSeat.Passenger
-                            ped.Task.LeaveVehicle(Bus, False)
-                            Script.Wait(500)
-                    End Select
+                    If Not ped.IsInVehicle(Bus) Then
+                        LeavedPassengerPedGroup.Remove(ped)
+                    Else
+                        Select Case ped.SeatIndex
+                            Case VehicleSeat.ExtraSeat1, VehicleSeat.ExtraSeat2, VehicleSeat.ExtraSeat3, VehicleSeat.ExtraSeat4, VehicleSeat.ExtraSeat5, VehicleSeat.ExtraSeat6, VehicleSeat.ExtraSeat7, VehicleSeat.ExtraSeat8, VehicleSeat.ExtraSeat9, VehicleSeat.ExtraSeat10, VehicleSeat.ExtraSeat11, VehicleSeat.ExtraSeat12
+                                ped.Task.WarpIntoVehicle(Bus, VehicleSeat.Passenger)
+                                Script.Wait(500)
+                            Case VehicleSeat.Passenger
+                                ped.Task.LeaveVehicle(Bus, False)
+                                Script.Wait(500)
+                        End Select
+                    End If
                     ped.RelationshipGroup = 0
                 Next
             End If
@@ -83,24 +96,31 @@ Public Class BusSimTimer2
             If Bus.IsAnyDoorOpen Then
                 For Each ped As Ped In LastStationPassengerPedGroup
                     ped.CurrentBlip.Remove()
-                    Select Case ped.SeatIndex
-                        Case VehicleSeat.ExtraSeat1, VehicleSeat.ExtraSeat2, VehicleSeat.ExtraSeat3, VehicleSeat.ExtraSeat4, VehicleSeat.ExtraSeat5, VehicleSeat.ExtraSeat6, VehicleSeat.ExtraSeat7, VehicleSeat.ExtraSeat8, VehicleSeat.ExtraSeat9, VehicleSeat.ExtraSeat10, VehicleSeat.ExtraSeat11, VehicleSeat.ExtraSeat12
-                            If Bus.IsSeatFree(VehicleSeat.LeftRear) Then
-                                ped.Task.WarpIntoVehicle(Bus, VehicleSeat.LeftRear)
-                            Else
-                                If Bus.IsSeatFree(VehicleSeat.RightRear) Then
-                                    ped.Task.WarpIntoVehicle(Bus, VehicleSeat.RightRear)
+                    If Not ped.IsInVehicle(Bus) Then
+                        LastStationPassengerPedGroup.Remove(ped)
+                    Else
+                        Select Case ped.SeatIndex
+                            Case VehicleSeat.ExtraSeat1, VehicleSeat.ExtraSeat2, VehicleSeat.ExtraSeat3, VehicleSeat.ExtraSeat4, VehicleSeat.ExtraSeat5, VehicleSeat.ExtraSeat6, VehicleSeat.ExtraSeat7, VehicleSeat.ExtraSeat8, VehicleSeat.ExtraSeat9, VehicleSeat.ExtraSeat10, VehicleSeat.ExtraSeat11, VehicleSeat.ExtraSeat12
+                                If Bus.IsSeatFree(VehicleSeat.LeftRear) Then
+                                    ped.Task.WarpIntoVehicle(Bus, VehicleSeat.LeftRear)
                                 Else
-                                    ped.Task.WarpIntoVehicle(Bus, VehicleSeat.Passenger)
+                                    If Bus.IsSeatFree(VehicleSeat.RightRear) Then
+                                        ped.Task.WarpIntoVehicle(Bus, VehicleSeat.RightRear)
+                                    Else
+                                        If Bus.IsSeatFree(VehicleSeat.Passenger) Then
+                                            ped.Task.WarpIntoVehicle(Bus, VehicleSeat.Passenger)
+                                        Else
+                                            Exit For
+                                        End If
+                                    End If
                                 End If
-                            End If
-                            'Script.Wait(500)
-                        Case VehicleSeat.Passenger, VehicleSeat.LeftRear, VehicleSeat.RightRear
-                            ped.Task.ClearAll()
-                            ped.Task.LeaveVehicle(Bus, False)
-                            Script.Wait(500)
-                            LastStationPassengerPedGroup.Remove(ped)
-                    End Select
+                                Script.Wait(500)
+                            Case VehicleSeat.Passenger, VehicleSeat.LeftRear, VehicleSeat.RightRear
+                                ped.Task.ClearAll()
+                                ped.Task.LeaveVehicle(Bus, False)
+                                Script.Wait(500)
+                        End Select
+                    End If
                     ped.RelationshipGroup = 0
                 Next
             End If

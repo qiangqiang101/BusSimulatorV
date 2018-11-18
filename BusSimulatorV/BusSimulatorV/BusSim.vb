@@ -28,28 +28,26 @@ Public Class BusSim
     Public CameraPos, CameraRot As Vector3
     Public MenuCamera As Camera
     Public MenuActivator As New Vector3(436.4384, -625.9146, 28.70776)
-    Public FrontDoorKey, RearDoorKey, LeftBlinkerKey, RightBlinkerKey As GTA.Control
-    Public FrontDoorKey2, RearDoorKey2, LeftBlinkerKey2, RightBlinkerKey2 As Keys
     Dim Speedometer As SpeedMeasurement
     Dim DebugMode As Boolean
     Public LeftBlinker, RightBlinker As Boolean
+    Public AutoDoors, AutoBlinkers, Brakelights As Boolean
     Public PedRelationshipGroup As Integer
     Public Shared PassengerPedGroup As New List(Of Ped)
     Public Shared LeavedPassengerPedGroup As New List(Of Ped)
     Public Shared LastStationPassengerPedGroup As New List(Of Ped)
+    Dim door, door1, door2, door3 As Boolean
+    Public TTS As Boolean
+    Dim SAPI As Object
 
     Public Sub LoadSettings()
         Try
-            FrontDoorKey = config.GetValue(Of GTA.Control)("JOYCONTROL", "FrontDoor", GTA.Control.ScriptRUp)
-            RearDoorKey = config.GetValue(Of GTA.Control)("JOYCONTROL", "RearDoor", GTA.Control.ScriptRDown)
-            LeftBlinkerKey = config.GetValue(Of GTA.Control)("JOYCONTROL", "LeftBlinker", GTA.Control.ScriptRLeft)
-            RightBlinkerKey = config.GetValue(Of GTA.Control)("JOYCONTROL", "RightBlinker", GTA.Control.ScriptRRight)
-            FrontDoorKey2 = config.GetValue(Of Keys)("KBCONTROL", "FrontDoor", Keys.Up)
-            RearDoorKey2 = config.GetValue(Of Keys)("KBCONTROL", "RearDoor", Keys.Down)
-            LeftBlinkerKey2 = config.GetValue(Of Keys)("KBCONTROL", "LeftBlinker", Keys.Left)
-            RightBlinkerKey2 = config.GetValue(Of Keys)("KBCONTROL", "RightBlinker", Keys.Right)
             Speedometer = config.GetValue(Of SpeedMeasurement)("GENERAL", "Speedometer", SpeedMeasurement.KPH)
             DebugMode = config.GetValue(Of Boolean)("GENERAL", "DebugMode", False)
+            AutoDoors = config.GetValue(Of Boolean)("GENERAL", "AutoDoors", True)
+            AutoBlinkers = config.GetValue(Of Boolean)("GENERAL", "AutoBlinkers", True)
+            Brakelights = config.GetValue(Of Boolean)("GENERAL", "Brakelights", True)
+            TTS = config.GetValue(Of Boolean)("GENERAL", "TTS", False)
         Catch ex As Exception
             Logger.Log(String.Format("(LoadSettings): {0} {1}", ex.Message, ex.StackTrace))
         End Try
@@ -58,15 +56,12 @@ Public Class BusSim
     Public Sub SaveSettings()
         Try
             If Not File.Exists("scripts\BusSimulatorV\config.ini") Then
-                config.SetValue(Of GTA.Control)("JOYCONTROL", "FrontDoor", GTA.Control.ScriptRUp)
-                config.SetValue(Of GTA.Control)("JOYCONTROL", "RearDoor", GTA.Control.ScriptRDown)
-                config.SetValue(Of GTA.Control)("JOYCONTROL", "LeftBlinker", GTA.Control.ScriptRLeft)
-                config.SetValue(Of GTA.Control)("JOYCONTROL", "RightBlinker", GTA.Control.ScriptRRight)
-                config.SetValue(Of Keys)("KBCONTROL", "FrontDoor", Keys.Up)
-                config.SetValue(Of Keys)("KBCONTROL", "RearDoor", Keys.Down)
-                config.SetValue(Of Keys)("KBCONTROL", "LeftBlinker", Keys.Left)
-                config.SetValue(Of Keys)("KBCONTROL", "RightBlinker", Keys.Right)
                 config.SetValue(Of SpeedMeasurement)("GENERAL", "Speedometer", SpeedMeasurement.KPH)
+                config.SetValue(Of Boolean)("GENERAL", "DebugMode", False)
+                config.SetValue(Of Boolean)("GENERAL", "AutoDoors", True)
+                config.SetValue(Of Boolean)("GENERAL", "AutoBlinkers", True)
+                config.SetValue(Of Boolean)("GENERAL", "Brakelights", True)
+                config.SetValue(Of Boolean)("GENERAL", "TTS", False)
                 config.Save()
             End If
         Catch ex As Exception
@@ -94,6 +89,11 @@ Public Class BusSim
             .Sprite = BlipSprite.Bus
             .Name = "Bus Depot"
         End With
+
+        If TTS Then
+            SAPI = CreateObject("SAPI.spvoice")
+            SAPI.Volume = 50
+        End If
     End Sub
 
     Public Sub CreateMainMenu()
@@ -215,6 +215,69 @@ Public Class BusSim
                 If IsGameUIVisible() Then UpdateTimerBars() : DrawDebugObjects()
             End If
 
+            If AutoDoors Then
+                For Each passenger As Ped In LeavedPassengerPedGroup
+                    door1 = passenger.IsInVehicle(Bus)
+                Next
+                For Each passenger As Ped In LastStationPassengerPedGroup
+                    door3 = passenger.IsInVehicle(Bus)
+                Next
+                For Each passenger As Ped In PassengerPedGroup
+                    door2 = Not passenger.IsInVehicle(Bus)
+                Next
+
+                If Not door1 AndAlso Not door2 AndAlso Not door3 Then               'no no no
+                    door = False
+                ElseIf Not door1 AndAlso Not door2 AndAlso door3 Then               'no no yes
+                    door = True
+                ElseIf Not door1 AndAlso door2 AndAlso door3 Then                   'no yes yes
+                    door = True
+                ElseIf door1 AndAlso door2 AndAlso door3 Then                       'yes yes yes
+                    door = True
+                ElseIf Not door1 AndAlso door2 AndAlso Not door3 Then               'no yes no
+                    door = True
+                ElseIf door1 AndAlso door2 AndAlso Not door3 Then                   'yes yes no
+                    door = True
+                ElseIf door1 AndAlso Not door2 AndAlso door3 Then                   'yes no yes
+                    door = True
+                ElseIf door1 AndAlso Not door2 AndAlso Not door3 Then               'yes no no
+                    door = True
+                End If
+
+                If door Then
+                    If Not Bus.IsDoorOpen(VehicleDoor.BackLeftDoor) Then Bus.OpenDoor(VehicleDoor.BackLeftDoor, False, False)
+                    If Not Bus.IsDoorOpen(VehicleDoor.BackRightDoor) Then Bus.OpenDoor(VehicleDoor.BackRightDoor, False, False)
+                    If Not Bus.IsDoorOpen(VehicleDoor.FrontLeftDoor) Then Bus.OpenDoor(VehicleDoor.FrontLeftDoor, False, False)
+                    If Not Bus.IsDoorOpen(VehicleDoor.FrontRightDoor) Then Bus.OpenDoor(VehicleDoor.FrontRightDoor, False, False)
+                Else
+                    If Bus.IsDoorOpen(VehicleDoor.BackLeftDoor) Then Bus.CloseDoor(VehicleDoor.BackLeftDoor, False)
+                    If Bus.IsDoorOpen(VehicleDoor.BackRightDoor) Then Bus.CloseDoor(VehicleDoor.BackRightDoor, False)
+                    If Bus.IsDoorOpen(VehicleDoor.FrontLeftDoor) Then Bus.CloseDoor(VehicleDoor.FrontLeftDoor, False)
+                    If Bus.IsDoorOpen(VehicleDoor.FrontRightDoor) Then Bus.CloseDoor(VehicleDoor.FrontRightDoor, False)
+                End If
+            End If
+
+            If Brakelights Then
+                If Bus.SpeedMPH = 0 Then Bus.BrakeLightsOn = True Else Bus.BrakeLightsOn = False
+            End If
+
+            If AutoBlinkers Then
+                If Bus.IsAnyDoorOpen Then
+                    Bus.LeftIndicatorLightOn = True
+                    Bus.RightIndicatorLightOn = True
+                Else
+                    Select Case GenerateDirectionsToCoord(BlipDict.Item(CurrentStationIndex).Position)
+                        Case Directions.GoStraight, Directions.JoinTheFreeway, Directions.KeepLeft, Directions.KeepRight, Directions.ProceedTheHighlightingRoute, Directions.YouHaveArrive
+                            Bus.LeftIndicatorLightOn = False
+                            Bus.RightIndicatorLightOn = False
+                        Case Directions.TurnLeft, Directions.RecalculatingRoute
+                            Bus.LeftIndicatorLightOn = True
+                        Case Directions.TurnRight, Directions.ExitFreeway
+                            Bus.RightIndicatorLightOn = True
+                    End Select
+                End If
+            End If
+
             Try
                 For Each ped As Ped In Bus.Passengers
                     If Not LeavedPassengerPedGroup.Contains(ped) Then
@@ -284,13 +347,16 @@ Public Class BusSim
                 End Try
             End If
 
-            If Bus.Position.DistanceTo(CurrentRoute.Stations(CurrentStationIndex).StationCoords) <= 7.5F Then
+            If Bus.Position.DistanceTo(CurrentRoute.Stations(CurrentStationIndex).StationCoords) <= 20.0F Then
                 Dim b As Blip = BlipDict.Item(CurrentStationIndex)
                 BlipDict.Remove(CurrentStationIndex)
                 b.Remove()
+
                 If Not CurrentStationIndex = CurrentRoute.TotalStation Then CurrentStationIndex += 1
 
                 If (CurrentStationIndex = CurrentRoute.TotalStation) Then
+                    If TTS Then SAPI.speak($"Station {CurrentRoute.Stations(CurrentStationIndex).StationName}", 1)
+
                     For Each ped As Ped In Bus.Passengers
                         If Not ped = Game.Player.Character Then
                             LastStationPassengerPedGroup.Add(ped)
@@ -318,10 +384,16 @@ Public Class BusSim
                     Bus.OpenDoor(VehicleDoor.BackLeftDoor, False, False)
                     Bus.OpenDoor(VehicleDoor.BackRightDoor, False, False)
                 Else
+                    Dim random As New Random()
+                    Dim leaveCount As Integer = random.Next(0, 3)
+
+                    If PassengerPedGroup.Count <> 0 AndAlso leaveCount <> 0 Then
+                        SoundPlayer("scripts\BusSimulatorV\Sound\bell.wav", 70)
+                    End If
+
                     b = BlipDict.Item(CurrentStationIndex)
                     b.ShowRoute = True
-                    Dim random As New Random()
-                    Dim leaveCount As Integer = random.Next(0, 2)
+
                     If Not Bus.IsSeatFree(VehicleSeat.Passenger) Then
                         Dim ped As Ped = Bus.GetPedOnSeat(VehicleSeat.Passenger)
                         LeavedPassengerPedGroup.Add(ped)
@@ -330,7 +402,7 @@ Public Class BusSim
                     End If
                     If Not PassengerPedGroup.Count = 0 AndAlso leaveCount >= 1 Then
                         If Not Bus.Position.DistanceTo(CurrentRoute.Stations(0).StationCoords) <= 5.0F Then
-                            Dim ped As Ped = PassengerPedGroup(New Random().Next(0, PassengerPedGroup.Count))
+                            Dim ped As Ped = PassengerPedGroup(random.Next(0, PassengerPedGroup.Count))
                             LeavedPassengerPedGroup.Add(ped)
                             ped.Task.ClearAll()
                             PassengerPedGroup.Remove(ped)
@@ -338,7 +410,7 @@ Public Class BusSim
                     End If
                     If Not PassengerPedGroup.Count = 0 AndAlso leaveCount >= 2 Then
                         If Not Bus.Position.DistanceTo(CurrentRoute.Stations(0).StationCoords) <= 5.0F Then
-                            Dim ped As Ped = PassengerPedGroup(New Random().Next(0, PassengerPedGroup.Count))
+                            Dim ped As Ped = PassengerPedGroup(random.Next(0, PassengerPedGroup.Count))
                             LeavedPassengerPedGroup.Add(ped)
                             ped.Task.ClearAll()
                             PassengerPedGroup.Remove(ped)
@@ -346,10 +418,9 @@ Public Class BusSim
                     End If
                     If Not PassengerPedGroup.Count >= 15 Then
                         Dim pedCount As Integer = 0, maxPed As Integer = 3
-                        For Each ped As Ped In World.GetNearbyPeds(Game.Player.Character, 15.0F)
+                        For Each ped As Ped In World.GetNearbyPeds(CurrentRoute.Stations(CurrentStationIndex - 1).StationCoords, 20.0F)
                             If pedCount < maxPed AndAlso Not ped = Game.Player.Character AndAlso Not ped.IsInVehicle() Then
                                 If Not PassengerPedGroup.Contains(ped) Then
-
                                     ped.StopPedFlee
                                     ped.RelationshipGroup = PedRelationshipGroup
                                     ped.Task.ClearAll()
@@ -370,23 +441,11 @@ Public Class BusSim
                             End If
                         Next
                     End If
+                    If TTS Then SAPI.speak($"Station {CurrentRoute.Stations(CurrentStationIndex - 1).StationName}, Next Station, {CurrentRoute.Stations(CurrentStationIndex).StationName}", 1)
                 End If
             End If
-
-            If Game.IsControlJustReleased(0, FrontDoorKey) AndAlso Game.Player.Character.IsInVehicle(Bus) Then
-                If Bus.IsDoorOpen(VehicleDoor.FrontLeftDoor) Then Bus.CloseDoor(VehicleDoor.FrontLeftDoor, False) Else Bus.OpenDoor(VehicleDoor.FrontLeftDoor, False, False)
-                If Bus.IsDoorOpen(VehicleDoor.FrontRightDoor) Then Bus.CloseDoor(VehicleDoor.FrontRightDoor, False) Else Bus.OpenDoor(VehicleDoor.FrontRightDoor, False, False)
-            End If
-            If Game.IsControlJustReleased(0, RearDoorKey) AndAlso Game.Player.Character.IsInVehicle(Bus) Then
-                If Bus.IsDoorOpen(VehicleDoor.BackLeftDoor) Then Bus.CloseDoor(VehicleDoor.BackLeftDoor, False) Else Bus.OpenDoor(VehicleDoor.BackLeftDoor, False, False)
-                If Bus.IsDoorOpen(VehicleDoor.BackRightDoor) Then Bus.CloseDoor(VehicleDoor.BackRightDoor, False) Else Bus.OpenDoor(VehicleDoor.BackRightDoor, False, False)
-            End If
-            Bus.LeftIndicatorLightOn = LeftBlinker
-            Bus.RightIndicatorLightOn = RightBlinker
-            If Game.IsControlJustReleased(0, LeftBlinkerKey) AndAlso Game.Player.Character.IsInVehicle(Bus) Then LeftBlinker = Not LeftBlinker
-            If Game.IsControlJustReleased(0, RightBlinkerKey) AndAlso Game.Player.Character.IsInVehicle(Bus) Then RightBlinker = Not RightBlinker
         Else
-            DrawMarker(MenuActivator, New Vector3(1.0F, 1.0F, 1.0F), Color.CadetBlue)
+                DrawMarker(MenuActivator, New Vector3(1.0F, 1.0F, 1.0F), Color.CadetBlue)
         End If
 
         If Game.Player.Character.Position.DistanceTo(MenuActivator) <= 2.0 AndAlso Not Game.Player.Character.IsInVehicle Then
@@ -533,6 +592,7 @@ Public Class BusSim
     Public Sub DrawDebugObjects()
         If DebugMode Then
             DrawSeat()
+            DrawDoor()
             DrawCoords()
         End If
     End Sub
@@ -568,6 +628,29 @@ Public Class BusSim
         End Try
     End Sub
 
+    Public Sub DrawDoor()
+        Try
+            Dim SRMR As SizeF = UIMenu.GetScreenResolutionMaintainRatio
+            Dim SZB As Point = UIMenu.GetSafezoneBounds
+            Dim X As Integer = 544
+            Dim Y As Integer = 190
+            Dim BusLayout As New UIResRectangle(New Point(((X - SZB.X) - 1), (((Convert.ToInt32(SRMR.Height) - SZB.Y) - Y) - 4)), New Size(42, 190), Color.FromArgb(200, 0, 0, 0)) : BusLayout.Draw()
+            Dim BusNum As New UIResRectangle(New Point(BusLayout.Position.X + 1, BusLayout.Position.Y + 1), New Size(40, 25), Color.FromArgb(200, Color.Orange)) : BusNum.Draw()
+            Dim busText As New UIResText("Door", New Point(BusNum.Position.X + (BusNum.Size.Width / 2), BusNum.Position.Y), 0.3F, Color.White, GTA.Font.ChaletLondon, UIResText.Alignment.Centered) : busText.Outline = True : busText.Draw()
+
+            Dim SD As New UIResRectangle(New Point(BusNum.Position.X + 1, BusNum.Position.Y + BusNum.Size.Height + 2), New Size(18, 18), If(door1, Color.FromArgb(200, Color.LightGreen), Color.FromArgb(200, Color.White))) : SD.Draw()
+            Dim LeaveGroup As New UIResText("LV", New Point(SD.Position.X + (SD.Size.Width / 2), SD.Position.Y), 0.2F, Color.Black, GTA.Font.ChaletLondon, UIResText.Alignment.Centered) : busText.Outline = True : LeaveGroup.Draw()
+            Dim SP As New UIResRectangle(New Point(BusNum.Position.X + 22, BusNum.Position.Y + BusNum.Size.Height + 2), New Size(18, 18), If(door2, Color.FromArgb(200, Color.LightGreen), Color.FromArgb(200, Color.White))) : SP.Draw()
+            Dim EnterGroup As New UIResText("EV", New Point(SP.Position.X + (SP.Size.Width / 2), SP.Position.Y), 0.2F, Color.Black, GTA.Font.ChaletLondon, UIResText.Alignment.Centered) : busText.Outline = True : EnterGroup.Draw()
+            Dim SLR As New UIResRectangle(New Point(BusNum.Position.X + 1, BusNum.Position.Y + BusNum.Size.Height + 22), New Size(18, 18), If(door3, Color.FromArgb(200, Color.LightGreen), Color.FromArgb(200, Color.White))) : SLR.Draw()
+            Dim AllLeaveGroup As New UIResText("AL", New Point(SLR.Position.X + (SLR.Size.Width / 2), SLR.Position.Y), 0.2F, Color.Black, GTA.Font.ChaletLondon, UIResText.Alignment.Centered) : busText.Outline = True : AllLeaveGroup.Draw()
+            Dim SRR As New UIResRectangle(New Point(BusNum.Position.X + 22, BusNum.Position.Y + BusNum.Size.Height + 22), New Size(18, 18), If(Bus.IsSeatFree(VehicleSeat.RightRear), Color.FromArgb(200, Color.LightGreen), Color.FromArgb(200, Color.White))) : SRR.Draw()
+            Dim DoorGroup As New UIResText("DR", New Point(SRR.Position.X + (SRR.Size.Width / 2), SRR.Position.Y), 0.2F, Color.Black, GTA.Font.ChaletLondon, UIResText.Alignment.Centered) : busText.Outline = True : DoorGroup.Draw()
+        Catch ex As Exception
+            Logger.Log(String.Format("(DrawSeat): {0} {1}", ex.Message, ex.StackTrace))
+        End Try
+    End Sub
+
     Public Sub DrawCoords()
         Try
             Dim SRMR As SizeF = UIMenu.GetScreenResolutionMaintainRatio
@@ -578,7 +661,7 @@ Public Class BusSim
             Dim pr3 As Vector3 = Game.Player.Character.Rotation
             Dim cr3 As Vector3 = GameplayCamera.Rotation
 
-            Dim X As Integer = 544
+            Dim X As Integer = 588
             Dim Y As Integer = 190
             Dim BoxLayout1 As New UIResRectangle(New Point(((X - SZB.X) - 1), (((Convert.ToInt32(SRMR.Height) - SZB.Y) - Y) - 4)), New Size(400, 190), Color.FromArgb(200, 0, 0, 0)) : BoxLayout1.Draw()
             Dim BoxTitle1 As New UIResRectangle(New Point(BoxLayout1.Position.X + 1, BoxLayout1.Position.Y + 1), New Size(398, 25), Color.FromArgb(200, Color.Orange)) : BoxTitle1.Draw()
@@ -591,7 +674,7 @@ Public Class BusSim
             Dim Line8 As New UIResText($"Zone Name: {World.GetZoneName(pv3)}", New Point(BoxTitle2.Position.X + 10, BoxTitle2.Position.Y + 50), 0.25F, Color.White, GTA.Font.ChaletLondon, UIResText.Alignment.Left) : Line8.Outline = True : Line8.Draw()
             Dim Line9 As New UIResText($"Zone Label: {World.GetZoneNameLabel(pv3)}", New Point(BoxTitle2.Position.X + 10, BoxTitle2.Position.Y + 70), 0.25F, Color.White, GTA.Font.ChaletLondon, UIResText.Alignment.Left) : Line9.Outline = True : Line9.Draw()
 
-            X = 946
+            X = 990
             Dim BoxLayout2 As New UIResRectangle(New Point(((X - SZB.X) - 1), (((Convert.ToInt32(SRMR.Height) - SZB.Y) - Y) - 4)), New Size(400, 190), Color.FromArgb(200, 0, 0, 0)) : BoxLayout2.Draw()
             Dim BoxTitle3 As New UIResRectangle(New Point(BoxLayout2.Position.X + 1, BoxLayout2.Position.Y + 1), New Size(398, 25), Color.FromArgb(200, Color.Orange)) : BoxTitle3.Draw()
             Dim TitleText3 As New UIResText("Position Coordinates", New Point(BoxTitle3.Position.X + (BoxTitle3.Size.Width / 2), BoxTitle3.Position.Y), 0.3F, Color.White, GTA.Font.ChaletLondon, UIResText.Alignment.Centered) : TitleText3.Outline = True : TitleText3.Draw()
@@ -620,24 +703,6 @@ Public Class BusSim
     End Sub
 
     Private Sub BusSim_KeyUp(sender As Object, e As KeyEventArgs) Handles Me.KeyUp
-        'If e.KeyCode = Keys.B Then
-        '    PlayMissionCompleteAudio(MissionCompleteAudioFlags.FranklinBig01)
-        '    Effects.Start(ScreenEffect.SuccessNeutral, 5000)
-        '    BigMessageThread.MessageInstance.ShowColoredShard("Mission Passed", "You completed the bus route.", HudColor.HUD_COLOUR_BLACK, HudColor.HUD_COLOUR_GOLD, 5000)
-        '    BusSimTimer.missionCompleteSF.PlayMissionCompleteScaleform("2 Strawberry / Morningwood", "Completion - Gold", MissionCompleteScaleformMedal.Gold, 100, 5000, New ObjectiveItem(ObjectiveItem.ObjectiveItemType.Task, "Stations Completed", "30/30", True), New ObjectiveItem(ObjectiveItem.ObjectiveItemType.Time, "Time Spent", 9999, True), New ObjectiveItem(ObjectiveItem.ObjectiveItemType.Number, "Passengers", 100, True), New ObjectiveItem(ObjectiveItem.ObjectiveItemType.MoneyMonetized, "Money Earned", 999, True))
-        '    BusSimTimer.missionCompleteSC = 5000
-        'End If
-        If IsInGame Then
-            If e.KeyCode = FrontDoorKey2 AndAlso Game.Player.Character.IsInVehicle(Bus) Then
-                If Bus.IsDoorOpen(VehicleDoor.FrontLeftDoor) Then Bus.CloseDoor(VehicleDoor.FrontLeftDoor, False) Else Bus.OpenDoor(VehicleDoor.FrontLeftDoor, False, False)
-                If Bus.IsDoorOpen(VehicleDoor.FrontRightDoor) Then Bus.CloseDoor(VehicleDoor.FrontRightDoor, False) Else Bus.OpenDoor(VehicleDoor.FrontRightDoor, False, False)
-            End If
-            If e.KeyCode = RearDoorKey2 AndAlso Game.Player.Character.IsInVehicle(Bus) Then
-                If Bus.IsDoorOpen(VehicleDoor.BackLeftDoor) Then Bus.CloseDoor(VehicleDoor.BackLeftDoor, False) Else Bus.OpenDoor(VehicleDoor.BackLeftDoor, False, False)
-                If Bus.IsDoorOpen(VehicleDoor.BackRightDoor) Then Bus.CloseDoor(VehicleDoor.BackRightDoor, False) Else Bus.OpenDoor(VehicleDoor.BackRightDoor, False, False)
-            End If
-            If e.KeyCode = LeftBlinkerKey2 Then LeftBlinker = Not LeftBlinker
-            If e.KeyCode = RightBlinkerKey2 Then RightBlinker = Not RightBlinker
-        End If
+
     End Sub
 End Class

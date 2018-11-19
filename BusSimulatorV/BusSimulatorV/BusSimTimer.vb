@@ -17,9 +17,10 @@ Public Class BusSimTimer
             If Bus.IsAnyDoorOpen AndAlso Bus.SpeedMPH = 0 Then
                 For Each ped As Ped In PassengerPedGroup
                     If Not ped.IsInVehicle(Bus) AndAlso Not ped.IsRunning Then
-                        If Bus.IsVehicleFull Then
+                        If Bus.IsVehicleFull Or World.GetDistance(Bus.Position, ped.Position) >= 20.0F Then
                             ped.CurrentBlip.Remove()
                             PassengerPedGroup.Remove(ped)
+                            Earned -= 1
                             Return
                         End If
                         ped.Task.ClearAll()

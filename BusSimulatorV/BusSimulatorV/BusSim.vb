@@ -1,4 +1,6 @@
-﻿Imports System.Drawing
+﻿Option Explicit On
+
+Imports System.Drawing
 Imports System.IO
 Imports GTA
 Imports GTA.Math
@@ -16,7 +18,7 @@ Public Class BusSim
     Public _timerPool As TimerBarPool
     Public Rectangle = New UIResRectangle()
     Public config As ScriptSettings = ScriptSettings.Load("scripts\BusSimulatorV\config.ini")
-    Public Earned As Integer = 0
+    Public Shared Earned As Integer = 0
     Public Shared Bus As Vehicle
     Public IsInGame As Boolean = False
     Public PlayerOriginalPosition, PlayerOriginalRotation As Vector3
@@ -37,8 +39,10 @@ Public Class BusSim
     Public Shared LeavedPassengerPedGroup As New List(Of Ped)
     Public Shared LastStationPassengerPedGroup As New List(Of Ped)
     Dim door, door1, door2, door3 As Boolean
-    Public TTS As Boolean
+    Public TTS As Boolean, TTSVoice As Integer
     Dim SAPI As Object
+    Public FrontLeftDoorJ, FrontRightDoorJ, RearLeftDoorJ, RearRightDoorJ, ModifierJ As GTA.Control
+    Public FrontLeftDoorK, FrontRightDoorK, RearLeftDoorK, RearRightDoork As Keys
 
     Public Sub LoadSettings()
         Try
@@ -48,6 +52,16 @@ Public Class BusSim
             AutoBlinkers = config.GetValue(Of Boolean)("GENERAL", "AutoBlinkers", True)
             Brakelights = config.GetValue(Of Boolean)("GENERAL", "Brakelights", True)
             TTS = config.GetValue(Of Boolean)("GENERAL", "TTS", False)
+            TTSVoice = config.GetValue(Of Integer)("GENERAL", "TTSVoice", 0)
+            FrontLeftDoorJ = config.GetValue(Of GTA.Control)("JOYCONTROLS", "FrontLeftDoor", GTA.Control.ScriptPadLeft)
+            FrontRightDoorJ = config.GetValue(Of GTA.Control)("JOYCONTROLS", "FrontRightDoor", GTA.Control.ScriptPadLeft)
+            RearLeftDoorJ = config.GetValue(Of GTA.Control)("JOYCONTROLS", "RearLeftDoor", GTA.Control.ScriptPadRight)
+            RearRightDoorJ = config.GetValue(Of GTA.Control)("JOYCONTROLS", "RearRightDoor", GTA.Control.ScriptPadRight)
+            ModifierJ = config.GetValue(Of GTA.Control)("JOYCONTROLS", "Modifier", GTA.Control.ScriptSelect)
+            FrontLeftDoorK = config.GetValue(Of Keys)("KBCONTROLS", "FrontLeftDoor", Keys.NumPad1)
+            FrontRightDoorK = config.GetValue(Of Keys)("KBCONTROLS", "FrontRightDoor", Keys.NumPad1)
+            RearLeftDoorK = config.GetValue(Of Keys)("KBCONTROLS", "RearLeftDoor", Keys.NumPad3)
+            RearRightDoork = config.GetValue(Of Keys)("KBCONTROLS", "RearRightDoor", Keys.NumPad3)
         Catch ex As Exception
             Logger.Log(String.Format("(LoadSettings): {0} {1}", ex.Message, ex.StackTrace))
         End Try
@@ -62,6 +76,16 @@ Public Class BusSim
                 config.SetValue(Of Boolean)("GENERAL", "AutoBlinkers", True)
                 config.SetValue(Of Boolean)("GENERAL", "Brakelights", True)
                 config.SetValue(Of Boolean)("GENERAL", "TTS", False)
+                config.SetValue(Of Integer)("GENERAL", "TTSVoice", 0)
+                config.SetValue(Of GTA.Control)("JOYCONTROLS", "FrontLeftDoor", GTA.Control.ScriptPadLeft)
+                config.SetValue(Of GTA.Control)("JOYCONTROLS", "FrontRightDoor", GTA.Control.ScriptPadLeft)
+                config.SetValue(Of GTA.Control)("JOYCONTROLS", "RearLeftDoor", GTA.Control.ScriptPadRight)
+                config.SetValue(Of GTA.Control)("JOYCONTROLS", "RearRightDoor", GTA.Control.ScriptPadRight)
+                config.SetValue(Of GTA.Control)("JOYCONTROLS", "Modifier", GTA.Control.ScriptSelect)
+                config.SetValue(Of GTA.Control)("KBCONTROLS", "FrontLeftDoor", Keys.NumPad1)
+                config.SetValue(Of GTA.Control)("KBCONTROLS", "FrontRightDoor", Keys.NumPad1)
+                config.SetValue(Of GTA.Control)("KBCONTROLS", "RearLeftDoor", Keys.NumPad3)
+                config.SetValue(Of GTA.Control)("KBCONTROLS", "RearRightDoor", Keys.NumPad3)
                 config.Save()
             End If
         Catch ex As Exception
@@ -92,6 +116,7 @@ Public Class BusSim
 
         If TTS Then
             SAPI = CreateObject("SAPI.spvoice")
+            SAPI.Voice = SAPI.GetVoices.Item(TTSVoice)
             SAPI.Volume = 50
         End If
     End Sub
@@ -213,6 +238,13 @@ Public Class BusSim
             If Game.Player.Character.IsInVehicle(Bus) Then
                 DrawMarker(CurrentRoute.Stations(CurrentStationIndex).StationCoords)
                 If IsGameUIVisible() Then UpdateTimerBars() : DrawDebugObjects()
+
+                If Not AutoDoors Then
+                    If Game.IsControlJustReleased(0, ModifierJ) AndAlso Game.IsControlJustReleased(0, FrontLeftDoorJ) Then If Bus.IsDoorOpen(VehicleDoor.FrontLeftDoor) Then Bus.CloseDoor(VehicleDoor.FrontLeftDoor, False) Else Bus.OpenDoor(VehicleDoor.FrontLeftDoor, False, False)
+                    If Game.IsControlJustReleased(0, ModifierJ) AndAlso Game.IsControlJustReleased(0, FrontRightDoorJ) Then If Bus.IsDoorOpen(VehicleDoor.FrontRightDoor) Then Bus.CloseDoor(VehicleDoor.FrontRightDoor, False) Else Bus.OpenDoor(VehicleDoor.FrontRightDoor, False, False)
+                    If Game.IsControlJustReleased(0, ModifierJ) AndAlso Game.IsControlJustReleased(0, RearLeftDoorJ) Then If Bus.IsDoorOpen(VehicleDoor.BackLeftDoor) Then Bus.CloseDoor(VehicleDoor.BackLeftDoor, False) Else Bus.OpenDoor(VehicleDoor.BackLeftDoor, False, False)
+                    If Game.IsControlJustReleased(0, ModifierJ) AndAlso Game.IsControlJustReleased(0, RearRightDoorJ) Then If Bus.IsDoorOpen(VehicleDoor.BackRightDoor) Then Bus.CloseDoor(VehicleDoor.BackRightDoor, False) Else Bus.OpenDoor(VehicleDoor.BackRightDoor, False, False)
+                End If
             End If
 
             If AutoDoors Then
@@ -703,6 +735,11 @@ Public Class BusSim
     End Sub
 
     Private Sub BusSim_KeyUp(sender As Object, e As KeyEventArgs) Handles Me.KeyUp
-
+        If IsInGame AndAlso Not AutoDoors AndAlso Game.Player.Character.IsInVehicle(Bus) Then
+            If e.KeyCode = FrontLeftDoorK Then If Bus.IsDoorOpen(VehicleDoor.FrontLeftDoor) Then Bus.CloseDoor(VehicleDoor.FrontLeftDoor, False) Else Bus.OpenDoor(VehicleDoor.FrontLeftDoor, False, False)
+            If e.KeyCode = FrontRightDoorK Then If Bus.IsDoorOpen(VehicleDoor.FrontRightDoor) Then Bus.CloseDoor(VehicleDoor.FrontRightDoor, False) Else Bus.OpenDoor(VehicleDoor.FrontRightDoor, False, False)
+            If e.KeyCode = RearLeftDoorK Then If Bus.IsDoorOpen(VehicleDoor.BackLeftDoor) Then Bus.CloseDoor(VehicleDoor.BackLeftDoor, False) Else Bus.OpenDoor(VehicleDoor.BackLeftDoor, False, False)
+            If e.KeyCode = RearRightDoork Then If Bus.IsDoorOpen(VehicleDoor.BackRightDoor) Then Bus.CloseDoor(VehicleDoor.BackRightDoor, False) Else Bus.OpenDoor(VehicleDoor.BackRightDoor, False, False)
+        End If
     End Sub
 End Class

@@ -7,6 +7,7 @@ Imports GTA.Math
 Imports GTA.Native
 Imports INMNativeUI
 Imports System.Windows.Forms
+Imports System.Media
 
 Public Class BusSim
     Inherits Script
@@ -127,7 +128,7 @@ Public Class BusSim
             MainMenu.SetBannerType(Rectangle)
             MainMenu.MouseEdgeEnabled = False
             _menuPool.Add(MainMenu)
-            itemRoute = New UIMenuItem("Select Route", "Select from 24 playable routes.")
+            itemRoute = New UIMenuItem("Select Route", $"Select from {Directory.GetFiles("scripts\BusSimulatorV\Route", "*.xml").Count} playable routes.")
             MainMenu.AddItem(itemRoute)
             itemPlay = New UIMenuItem("Start Mission", "Play selected route.")
             With itemPlay
@@ -247,7 +248,7 @@ Public Class BusSim
                 End If
             End If
 
-            If AutoDoors Then
+            If AutoDoors AndAlso Bus.EngineRunning Then
                 For Each passenger As Ped In LeavedPassengerPedGroup
                     door1 = passenger.IsInVehicle(Bus)
                 Next
@@ -304,8 +305,10 @@ Public Class BusSim
                             Bus.RightIndicatorLightOn = False
                         Case Directions.TurnLeft, Directions.RecalculatingRoute
                             Bus.LeftIndicatorLightOn = True
+                            Bus.RightIndicatorLightOn = False
                         Case Directions.TurnRight, Directions.ExitFreeway
                             Bus.RightIndicatorLightOn = True
+                            Bus.LeftIndicatorLightOn = False
                     End Select
                 End If
             End If
@@ -387,7 +390,7 @@ Public Class BusSim
                 If Not CurrentStationIndex = CurrentRoute.TotalStation Then CurrentStationIndex += 1
 
                 If (CurrentStationIndex = CurrentRoute.TotalStation) Then
-                    If TTS Then SAPI.speak($"Station {CurrentRoute.Stations(CurrentStationIndex).StationName}", 1)
+                    If TTS Then SAPI.speak($"Station {CurrentRoute.Stations(CurrentStationIndex - 1).StationName}", 1)
 
                     For Each ped As Ped In Bus.Passengers
                         If Not ped = Game.Player.Character Then
@@ -402,13 +405,14 @@ Public Class BusSim
                     BlipList.Clear()
                     CurrentStationIndex = 0
                     Game.Player.Character.Money += Earned
-                    Earned = 0
+
                     itemPlay.Text = "Start Mission"
                     itemPlay.Enabled = True
                     RemoveTimerBars()
                     PlayMissionCompleteAudio(MissionCompleteAudioFlags.FranklinBig01)
                     Effects.Start(ScreenEffect.SuccessNeutral, 5000)
-                    BigMessageThread.MessageInstance.ShowColoredShard("Mission Passed", $"You completed {CurrentRoute.RouteName}.", HudColor.HUD_COLOUR_BLACK, HudColor.HUD_COLOUR_GOLD, 5000)
+                    BigMessageThread.MessageInstance.ShowColoredShard("Mission Passed", $"You completed {CurrentRoute.RouteName}, Earned ${Earned}.", HudColor.HUD_COLOUR_BLACK, HudColor.HUD_COLOUR_GOLD, 5000)
+                    Earned = 0
 
                     Bus.RemoveAllExtras
                     Bus.OpenDoor(VehicleDoor.FrontLeftDoor, False, False)
@@ -417,7 +421,7 @@ Public Class BusSim
                     Bus.OpenDoor(VehicleDoor.BackRightDoor, False, False)
                 Else
                     Dim random As New Random()
-                    Dim leaveCount As Integer = random.Next(0, 3)
+                    Dim leaveCount = random.Next(0, 3)
 
                     If PassengerPedGroup.Count <> 0 AndAlso leaveCount <> 0 Then
                         SoundPlayer("scripts\BusSimulatorV\Sound\bell.wav", 70)
@@ -451,7 +455,7 @@ Public Class BusSim
                     If Not PassengerPedGroup.Count >= 15 Then
                         Dim pedCount As Integer = 0, maxPed As Integer = 3
                         For Each ped As Ped In World.GetNearbyPeds(CurrentRoute.Stations(CurrentStationIndex - 1).StationCoords, 20.0F)
-                            If pedCount < maxPed AndAlso Not ped = Game.Player.Character AndAlso Not ped.IsInVehicle() Then
+                            If pedCount < maxPed AndAlso Not ped = Game.Player.Character AndAlso ped.IsHuman AndAlso Not ped.IsInVehicle() Then
                                 If Not PassengerPedGroup.Contains(ped) Then
                                     ped.StopPedFlee
                                     ped.RelationshipGroup = PedRelationshipGroup
@@ -477,7 +481,7 @@ Public Class BusSim
                 End If
             End If
         Else
-                DrawMarker(MenuActivator, New Vector3(1.0F, 1.0F, 1.0F), Color.CadetBlue)
+            DrawMarker(MenuActivator, New Vector3(1.0F, 1.0F, 1.0F), Color.CadetBlue)
         End If
 
         If Game.Player.Character.Position.DistanceTo(MenuActivator) <= 2.0 AndAlso Not Game.Player.Character.IsInVehicle Then

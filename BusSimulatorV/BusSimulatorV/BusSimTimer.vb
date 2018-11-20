@@ -1,6 +1,7 @@
 ﻿Imports GTA
 Imports BusSimulatorV.BusSim
 Imports System.Drawing
+Imports GTA.Math
 
 Public Class BusSimTimer
     Inherits Script
@@ -53,10 +54,6 @@ Public Class BusSimTimer
     Private Sub BusSimTimer_Tick(sender As Object, e As EventArgs) Handles Me.Tick
         FixPedEnterBus()
         PedAutoShufferingSeat()
-
-        'For Each ped In LeavedPassengerPedGroup
-        '    ped.MutePed(True)
-        'Next
     End Sub
 End Class
 
@@ -93,6 +90,7 @@ Public Class BusSimTimer2
 
     Private Sub AllPedLeaveBus()
         On Error Resume Next
+retry:
         If Not LastStationPassengerPedGroup.Count = 0 AndAlso Not Bus = Nothing Then
             If Bus.IsAnyDoorOpen Then
                 For Each ped As Ped In LastStationPassengerPedGroup
@@ -101,6 +99,10 @@ Public Class BusSimTimer2
                         LastStationPassengerPedGroup.Remove(ped)
                     Else
                         Select Case ped.SeatIndex
+                            Case VehicleSeat.Passenger, VehicleSeat.LeftRear, VehicleSeat.RightRear
+                                ped.Task.ClearAll()
+                                ped.Task.LeaveVehicle(Bus, False)
+                                Script.Wait(500)
                             Case VehicleSeat.ExtraSeat1, VehicleSeat.ExtraSeat2, VehicleSeat.ExtraSeat3, VehicleSeat.ExtraSeat4, VehicleSeat.ExtraSeat5, VehicleSeat.ExtraSeat6, VehicleSeat.ExtraSeat7, VehicleSeat.ExtraSeat8, VehicleSeat.ExtraSeat9, VehicleSeat.ExtraSeat10, VehicleSeat.ExtraSeat11, VehicleSeat.ExtraSeat12
                                 If Bus.IsSeatFree(VehicleSeat.LeftRear) Then
                                     ped.Task.WarpIntoVehicle(Bus, VehicleSeat.LeftRear)
@@ -111,14 +113,10 @@ Public Class BusSimTimer2
                                         If Bus.IsSeatFree(VehicleSeat.Passenger) Then
                                             ped.Task.WarpIntoVehicle(Bus, VehicleSeat.Passenger)
                                         Else
-                                            Exit For
+                                            GoTo retry
                                         End If
                                     End If
                                 End If
-                                Script.Wait(500)
-                            Case VehicleSeat.Passenger, VehicleSeat.LeftRear, VehicleSeat.RightRear
-                                ped.Task.ClearAll()
-                                ped.Task.LeaveVehicle(Bus, False)
                                 Script.Wait(500)
                         End Select
                     End If

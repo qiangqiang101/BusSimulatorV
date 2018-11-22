@@ -25,68 +25,29 @@ Module Helper
 
     <Extension()>
     Public Function GetEmptySeat(ByVal vehicle As Vehicle) As VehicleSeat
-        If vehicle.IsSeatFree(VehicleSeat.LeftRear) Then
-            Return VehicleSeat.LeftRear
-        Else
-            If vehicle.IsSeatFree(VehicleSeat.RightRear) Then
-                Return VehicleSeat.RightRear
-            Else
-                Return VehicleSeat.Passenger
-            End If
-        End If
+        If vehicle.IsSeatFree(VehicleSeat.LeftRear) Then Return VehicleSeat.LeftRear
+        If vehicle.IsSeatFree(VehicleSeat.RightRear) Then Return VehicleSeat.RightRear
+        If vehicle.IsSeatFree(VehicleSeat.ExtraSeat1) Then Return VehicleSeat.ExtraSeat1
+        Return VehicleSeat.Passenger
     End Function
 
     <Extension()>
     Public Function GetEmptyExtraSeat(ByVal vehicle As Vehicle, originSeat As VehicleSeat) As VehicleSeat
-        If vehicle.IsSeatFree(VehicleSeat.ExtraSeat12) Then
-            Return VehicleSeat.ExtraSeat12
-        Else
-            If vehicle.IsSeatFree(VehicleSeat.ExtraSeat11) Then
-                Return VehicleSeat.ExtraSeat11
-            Else
-                If vehicle.IsSeatFree(VehicleSeat.ExtraSeat10) Then
-                    Return VehicleSeat.ExtraSeat10
-                Else
-                    If vehicle.IsSeatFree(VehicleSeat.ExtraSeat9) Then
-                        Return VehicleSeat.ExtraSeat9
-                    Else
-                        If vehicle.IsSeatFree(VehicleSeat.ExtraSeat8) Then
-                            Return VehicleSeat.ExtraSeat8
-                        Else
-                            If vehicle.IsSeatFree(VehicleSeat.ExtraSeat7) Then
-                                Return VehicleSeat.ExtraSeat7
-                            Else
-                                If vehicle.IsSeatFree(VehicleSeat.ExtraSeat6) Then
-                                    Return VehicleSeat.ExtraSeat6
-                                Else
-                                    If vehicle.IsSeatFree(VehicleSeat.ExtraSeat5) Then
-                                        Return VehicleSeat.ExtraSeat5
-                                    Else
-                                        If vehicle.IsSeatFree(VehicleSeat.ExtraSeat4) Then
-                                            Return VehicleSeat.ExtraSeat4
-                                        Else
-                                            If vehicle.IsSeatFree(VehicleSeat.ExtraSeat3) Then
-                                                Return VehicleSeat.ExtraSeat3
-                                            Else
-                                                If vehicle.IsSeatFree(VehicleSeat.ExtraSeat2) Then
-                                                    Return VehicleSeat.ExtraSeat2
-                                                Else
-                                                    If vehicle.IsSeatFree(VehicleSeat.ExtraSeat1) Then
-                                                        Return VehicleSeat.ExtraSeat1
-                                                    Else
-                                                        Return originSeat
-                                                    End If
-                                                End If
-                                            End If
-                                        End If
-                                    End If
-                                End If
-                            End If
-                        End If
-                    End If
-                End If
-            End If
-        End If
+        If vehicle.IsSeatFree(VehicleSeat.ExtraSeat12) Then Return VehicleSeat.ExtraSeat12
+        If vehicle.IsSeatFree(VehicleSeat.ExtraSeat11) Then Return VehicleSeat.ExtraSeat11
+        If vehicle.IsSeatFree(VehicleSeat.ExtraSeat10) Then Return VehicleSeat.ExtraSeat10
+        If vehicle.IsSeatFree(VehicleSeat.ExtraSeat9) Then Return VehicleSeat.ExtraSeat9
+        If vehicle.IsSeatFree(VehicleSeat.ExtraSeat8) Then Return VehicleSeat.ExtraSeat8
+        If vehicle.IsSeatFree(VehicleSeat.ExtraSeat7) Then Return VehicleSeat.ExtraSeat7
+        If vehicle.IsSeatFree(VehicleSeat.ExtraSeat6) Then Return VehicleSeat.ExtraSeat6
+        If vehicle.IsSeatFree(VehicleSeat.ExtraSeat5) Then Return VehicleSeat.ExtraSeat5
+        If vehicle.IsSeatFree(VehicleSeat.ExtraSeat4) Then Return VehicleSeat.ExtraSeat4
+        If vehicle.IsSeatFree(VehicleSeat.ExtraSeat3) Then Return VehicleSeat.ExtraSeat3
+        If vehicle.IsSeatFree(VehicleSeat.ExtraSeat2) Then Return VehicleSeat.ExtraSeat2
+
+        'If vehicle.IsSeatFree(VehicleSeat.LeftRear) Then Return VehicleSeat.LeftRear
+        'If vehicle.IsSeatFree(VehicleSeat.RightRear) Then Return VehicleSeat.RightRear
+        Return originSeat
     End Function
 
     <Extension()>
@@ -349,6 +310,90 @@ Module Helper
             End Using
         End Using
     End Sub
+
+    <Extension()>
+    Public Sub SetTattoo(ped As Ped, collection As String, overlay As String)
+        Native.Function.Call(Hash._SET_PED_DECORATION, collection.GetHashKey, overlay.GetHashKey)
+    End Sub
+
+    <Extension()>
+    Private Function GetHashKey(str As String) As Integer
+        Return Native.Function.Call(Of Integer)(Hash.GET_HASH_KEY, str)
+    End Function
+
+    <Extension()>
+    Public Sub TurnBusInteriorLightsOn(bus As Vehicle)
+        If bus.EngineRunning Then
+            Select Case World.CurrentDayTime.Hours
+                Case 19, 20, 21, 22, 23, 0, 1, 2, 3, 4, 5, 6, 7
+                    If bus.HasBone("misc_w") AndAlso bus.HasBone("misc_x") AndAlso bus.HasBone("misc_y") AndAlso bus.HasBone("misc_z") Then
+                        If bus.HasBone("misc_w") Then World.DrawLightWithRange(bus.GetBoneCoord("misc_w"), Color.White, 2.7, 5.0)
+                        If bus.HasBone("misc_x") Then World.DrawLightWithRange(bus.GetBoneCoord("misc_x"), Color.White, 2.7, 5.0)
+                        If bus.HasBone("misc_y") Then World.DrawLightWithRange(bus.GetBoneCoord("misc_y"), Color.White, 2.7, 5.0)
+                        If bus.HasBone("misc_z") Then World.DrawLightWithRange(bus.GetBoneCoord("misc_z"), Color.White, 2.7, 5.0)
+                    Else
+                        If bus.HasBone("misc_g") Then World.DrawLightWithRange(bus.GetBoneCoord("misc_g"), Color.White, 2.7, 5.0)
+                        If bus.HasBone("misc_h") Then World.DrawLightWithRange(bus.GetBoneCoord("misc_h"), Color.White, 2.7, 5.0)
+                        If bus.HasBone("misc_i") Then World.DrawLightWithRange(bus.GetBoneCoord("misc_i"), Color.White, 2.7, 5.0)
+                        If bus.HasBone("misc_j") Then World.DrawLightWithRange(bus.GetBoneCoord("misc_j"), Color.White, 2.7, 5.0)
+                    End If
+                    bus.InteriorLightOn = True
+            End Select
+        End If
+    End Sub
+
+    <Extension()>
+    Public Function IsPedTooFarAwayFrom(ped As Ped, bus As Vehicle) As Boolean
+        Return World.GetDistance(bus.Position, ped.Position) >= 25.0F
+    End Function
+
+    <Extension()>
+    Public Function GetSeatPosition(bus As Vehicle, seat As VehicleSeat) As Vector3
+        Select Case seat
+            Case VehicleSeat.Driver, VehicleSeat.LeftFront
+                Return bus.GetBoneCoord("seat_dside_f")
+            Case VehicleSeat.Passenger, VehicleSeat.RightFront
+                Return bus.GetBoneCoord("seat_pside_f")
+            Case VehicleSeat.LeftRear
+                Return bus.GetBoneCoord("seat_dside_r")
+            Case VehicleSeat.RightRear
+                Return bus.GetBoneCoord("seat_pside_r")
+            Case VehicleSeat.ExtraSeat1
+                Return bus.GetBoneCoord("seat_dside_r1")
+            Case VehicleSeat.ExtraSeat2
+                Return bus.GetBoneCoord("seat_pside_r1")
+            Case VehicleSeat.ExtraSeat3
+                Return bus.GetBoneCoord("seat_dside_r2")
+            Case VehicleSeat.ExtraSeat4
+                Return bus.GetBoneCoord("seat_pside_r2")
+            Case VehicleSeat.ExtraSeat5
+                Return bus.GetBoneCoord("seat_dside_r3")
+            Case VehicleSeat.ExtraSeat6
+                Return bus.GetBoneCoord("seat_pside_r3")
+            Case VehicleSeat.ExtraSeat7
+                Return bus.GetBoneCoord("seat_dside_r4")
+            Case VehicleSeat.ExtraSeat8
+                Return bus.GetBoneCoord("seat_pside_r4")
+            Case VehicleSeat.ExtraSeat9
+                Return bus.GetBoneCoord("seat_dside_r5")
+            Case VehicleSeat.ExtraSeat10
+                Return bus.GetBoneCoord("seat_pside_r5")
+            Case VehicleSeat.ExtraSeat11
+                Return bus.GetBoneCoord("seat_dside_r6")
+            Case VehicleSeat.ExtraSeat12
+                Return bus.GetBoneCoord("seat_pside_r6")
+            Case Else
+                Return bus.GetBoneCoord(0)
+        End Select
+    End Function
+
+    Public Enum Difficulty
+        Normal
+        Hard
+        VeryHard
+        ExtremelyHard
+    End Enum
+
 End Module
 
 Public Class ObjectiveItem

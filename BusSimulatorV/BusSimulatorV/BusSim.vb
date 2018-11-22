@@ -12,27 +12,28 @@ Imports System.Media
 Public Class BusSim
     Inherits Script
 
-    Public WithEvents MainMenu, RouteMenu As UIMenu
-    Public itemMRoute, itemPlay, itemRoute As UIMenuItem
-    Public CurrentRoute As BusRoute
+    Public WithEvents MainMenu, RouteMenu, DifficultyMenu As UIMenu
+    Public itemMRoute, itemPlay, itemRoute, itemDifficulty As UIMenuItem
+    Public itemNormal, itemHard, itemVeryHard, itemExtremelyHard As UIMenuItem
+    Public Shared CurrentRoute As BusRoute
     Public _menuPool As MenuPool
     Public _timerPool As TimerBarPool
     Public Rectangle = New UIResRectangle()
     Public config As ScriptSettings = ScriptSettings.Load("scripts\BusSimulatorV\config.ini")
     Public Shared Earned As Integer = 0
-    Public Shared Bus As Vehicle
+    Public Shared Bus, previewBus As Vehicle
     Public IsInGame As Boolean = False
     Public PlayerOriginalPosition, PlayerOriginalRotation As Vector3
     Public EarnedTimerBar, SpeedTimerBar, NextStationTimerBar, StationTimerBar As TextTimerBar
-    Public CurrentStationIndex As Integer = 0
+    Public Shared CurrentStationIndex As Integer = 0
     Public BlipDict As New Dictionary(Of Integer, Blip)
     Public BlipList As New List(Of Blip)
     Public ModBlip As Blip
-    Public CameraPos, CameraRot As Vector3
-    Public MenuCamera As Camera
+    Public CameraPos, CameraRot, RouteCameraPos, RouteCameraRot As Vector3
+    Public MenuCamera, StartCamera, RouteCamera As Camera
     Public MenuActivator As New Vector3(436.4384, -625.9146, 28.70776)
     Dim Speedometer As SpeedMeasurement
-    Dim DebugMode As Boolean
+    Public Shared DebugMode As Boolean
     Public LeftBlinker, RightBlinker As Boolean
     Public AutoDoors, AutoBlinkers, Brakelights As Boolean
     Public PedRelationshipGroup As Integer
@@ -44,6 +45,7 @@ Public Class BusSim
     Dim SAPI As Object
     Public FrontLeftDoorJ, FrontRightDoorJ, RearLeftDoorJ, RearRightDoorJ, ModifierJ As GTA.Control
     Public FrontLeftDoorK, FrontRightDoorK, RearLeftDoorK, RearRightDoork As Keys
+    Dim Difficult As Difficulty = Difficulty.Normal
 
     Public Sub LoadSettings()
         Try
@@ -104,9 +106,12 @@ Public Class BusSim
 
         CreateMainMenu()
         CreateRouteMenu()
+        CreateDifficultyMenu()
 
         CameraPos = New Vector3(427.3593, -670.04, 29.90757)
         CameraRot = New Vector3(2.562092, 0, -16.7178)
+        RouteCameraPos = New Vector3(425.8456, -655.0043, 28.51719)
+        RouteCameraRot = New Vector3(10.6807, 0, 16.9965)
 
         ModBlip = World.CreateBlip(MenuActivator)
         With ModBlip
@@ -128,13 +133,9 @@ Public Class BusSim
             MainMenu.SetBannerType(Rectangle)
             MainMenu.MouseEdgeEnabled = False
             _menuPool.Add(MainMenu)
-            itemRoute = New UIMenuItem("Select Route", $"Select from {Directory.GetFiles("scripts\BusSimulatorV\Route", "*.xml").Count} playable routes.")
-            MainMenu.AddItem(itemRoute)
-            itemPlay = New UIMenuItem("Start Mission", "Play selected route.")
-            With itemPlay
-                .Enabled = False
-            End With
-            MainMenu.AddItem(itemPlay)
+            itemRoute = New UIMenuItem("Select Route", $"Select from {Directory.GetFiles("scripts\BusSimulatorV\Route", "*.xml").Count} playable routes.") : MainMenu.AddItem(itemRoute)
+            itemDifficulty = New UIMenuItem("Difficulty Level", "Select how hard do you want to play this mission.") : itemDifficulty.SetRightLabel("Normal") : MainMenu.AddItem(itemDifficulty)
+            itemPlay = New UIMenuItem("Start Mission", "Play selected route.") With {.Enabled = False} : MainMenu.AddItem(itemPlay)
             MainMenu.RefreshIndex()
         Catch ex As Exception
             Logger.Log(String.Format("(CreateMainMenu): {0} {1}", ex.Message, ex.StackTrace))
@@ -209,6 +210,38 @@ Public Class BusSim
         End Try
     End Sub
 
+    Public Sub CreateDifficultyMenu()
+        Try
+            DifficultyMenu = New UIMenu("", "DIFFICULTY LEVEL", New Point(0, -107))
+            DifficultyMenu.SetBannerType(Rectangle)
+            DifficultyMenu.MouseEdgeEnabled = False
+            _menuPool.Add(DifficultyMenu)
+            itemNormal = New UIMenuItem("~g~Normal", "Normal, Show everything.") With {.SubString1 = "Normal", .SubInteger1 = Difficulty.Normal} : DifficultyMenu.AddItem(itemNormal)
+            itemHard = New UIMenuItem("~y~Hard", "Hard, 2x Fares, No Marker.") With {.SubString1 = "Hard", .SubInteger1 = Difficulty.Hard} : DifficultyMenu.AddItem(itemHard)
+            itemVeryHard = New UIMenuItem("~o~Very Hard", "Very Hard, 4x Fares, No Marker and Route.") With {.SubString1 = "Very Hard", .SubInteger1 = Difficulty.VeryHard} : DifficultyMenu.AddItem(itemVeryHard)
+            itemExtremelyHard = New UIMenuItem("~r~(*TmT)", "Extremely Hard, 8x Fare, No Marker, Route and Blip.") With {.SubString1 = "(*TmT)", .SubInteger1 = Difficulty.ExtremelyHard} : DifficultyMenu.AddItem(itemExtremelyHard)
+            DifficultyMenu.RefreshIndex()
+            MainMenu.BindMenuToItem(DifficultyMenu, itemDifficulty)
+        Catch ex As Exception
+            Logger.Log(String.Format("(CreateMainMenu): {0} {1}", ex.Message, ex.StackTrace))
+        End Try
+    End Sub
+
+    Private Sub DifficultyMenu_OnItemSelect(sender As UIMenu, selectedItem As UIMenuItem, index As Integer) Handles DifficultyMenu.OnItemSelect
+        Try
+            Difficult = selectedItem.SubInteger1
+
+            itemDifficulty.SetRightLabel(selectedItem.SubString1)
+            For Each item As UIMenuItem In sender.MenuItems
+                item.SetRightBadge(UIMenuItem.BadgeStyle.None)
+            Next
+            selectedItem.SetRightBadge(UIMenuItem.BadgeStyle.Tick)
+            sender.GoBack()
+        Catch ex As Exception
+            Logger.Log(String.Format("(DifficultyMenu_OnItemSelect): {0} {1}", ex.Message, ex.StackTrace))
+        End Try
+    End Sub
+
     Private Sub BusSim_Tick(sender As Object, e As EventArgs) Handles Me.Tick
         'Try
         _menuPool.ProcessMenus()
@@ -227,6 +260,7 @@ Public Class BusSim
             Game.DisableControlThisFrame(0, GTA.Control.Jump)
             Game.DisableControlThisFrame(0, GTA.Control.Cover)
             Game.DisableControlThisFrame(0, GTA.Control.Context)
+            DrawBETACopyright()
         End If
 
         If RouteMenu.Visible Then
@@ -236,8 +270,15 @@ Public Class BusSim
         End If
 
         If IsInGame Then
+            If Not DebugMode Then DrawBETACopyright()
+            Bus.TurnBusInteriorLightsOn
+
             If Game.Player.Character.IsInVehicle(Bus) Then
-                DrawMarker(CurrentRoute.Stations(CurrentStationIndex).StationCoords)
+                Select Case Difficult
+                    Case Difficulty.Normal
+                        DrawMarker(CurrentRoute.Stations(CurrentStationIndex).StationCoords)
+                End Select
+
                 If IsGameUIVisible() Then UpdateTimerBars() : DrawDebugObjects()
 
                 If Not AutoDoors Then
@@ -291,7 +332,13 @@ Public Class BusSim
             End If
 
             If Brakelights Then
-                If Bus.SpeedMPH = 0 Then Bus.BrakeLightsOn = True Else Bus.BrakeLightsOn = False
+                If Bus.SpeedMPH = 0 AndAlso Not Game.IsControlPressed(0, GTA.Control.VehicleBrake) Then
+                    Bus.BrakeLightsOn = True
+                ElseIf Bus.SpeedMPH < 0 AndAlso Game.IsControlPressed(0, GTA.Control.VehicleBrake) Then
+                    Bus.BrakeLightsOn = True
+                ElseIf Bus.SpeedMPH < 0 AndAlso Not Game.IsControlPressed(0, GTA.Control.VehicleBrake) Then
+                    Bus.BrakeLightsOn = False
+                End If
             End If
 
             If AutoBlinkers Then
@@ -390,7 +437,7 @@ Public Class BusSim
                 If Not CurrentStationIndex = CurrentRoute.TotalStation Then CurrentStationIndex += 1
 
                 If (CurrentStationIndex = CurrentRoute.TotalStation) Then
-                    If TTS Then SAPI.speak($"Station {CurrentRoute.Stations(CurrentStationIndex - 1).StationName}", 1)
+                    If TTS Then SAPI.speak($"Final station {CurrentRoute.Stations(CurrentStationIndex - 1).StationName}, Thank you for using Los Santos Transit Route {CurrentRoute.RouteName}.", 1)
 
                     For Each ped As Ped In Bus.Passengers
                         If Not ped = Game.Player.Character Then
@@ -404,6 +451,16 @@ Public Class BusSim
                     BlipDict.Clear()
                     BlipList.Clear()
                     CurrentStationIndex = 0
+                    Select Case Difficult
+                        Case Difficulty.Normal
+                            Earned = Earned
+                        Case Difficulty.Hard
+                            Earned *= 2
+                        Case Difficulty.VeryHard
+                            Earned *= 4
+                        Case Difficulty.ExtremelyHard
+                            Earned *= 8
+                    End Select
                     Game.Player.Character.Money += Earned
 
                     itemPlay.Text = "Start Mission"
@@ -428,7 +485,10 @@ Public Class BusSim
                     End If
 
                     b = BlipDict.Item(CurrentStationIndex)
-                    b.ShowRoute = True
+                    Select Case Difficult
+                        Case Difficulty.Normal, Difficulty.Hard
+                            b.ShowRoute = True
+                    End Select
 
                     If Not Bus.IsSeatFree(VehicleSeat.Passenger) Then
                         Dim ped As Ped = Bus.GetPedOnSeat(VehicleSeat.Passenger)
@@ -461,7 +521,7 @@ Public Class BusSim
                                     ped.RelationshipGroup = PedRelationshipGroup
                                     ped.Task.ClearAll()
                                     ped.AlwaysKeepTask = True
-                                    ped.Seat((Bus.GetEmptySeat - 1) + pedCount)
+                                    ped.Seat((Bus.GetEmptySeat + 1) - pedCount)
 
                                     Dim pedblip As Blip = ped.AddBlip
                                     With pedblip
@@ -490,7 +550,10 @@ Public Class BusSim
             End If
             If Game.IsControlJustReleased(0, GTA.Control.Context) Then
                 MainMenu.Show()
+                StartCamera = World.CreateCamera(GameplayCamera.Position, GameplayCamera.Rotation, GameplayCamera.FieldOfView)
+                World.RenderingCamera = StartCamera
                 MenuCamera = World.CreateCamera(CameraPos, CameraRot, GameplayCamera.FieldOfView)
+                StartCamera.InterpTo(MenuCamera, 3000, True, True)
                 World.RenderingCamera = MenuCamera
             End If
         End If
@@ -527,10 +590,15 @@ Public Class BusSim
     Private Sub MainMenu_OnItemSelect(sender As UIMenu, selectedItem As UIMenuItem, index As Integer) Handles MainMenu.OnItemSelect
         Try
             If selectedItem.Text = "Start Mission" Then
+                Game.FadeScreenOut(2000)
+                Script.Wait(2000)
                 sender.Hide()
                 World.RenderingCamera = Nothing
                 World.DestroyAllCameras()
 
+                PassengerPedGroup.Clear()
+                LeavedPassengerPedGroup.Clear()
+                LastStationPassengerPedGroup.Clear()
                 If Not Bus = Nothing Then Bus.Delete()
                 Bus = World.CreateVehicle(CurrentRoute.BusModel, CurrentRoute.BusSpawnPoint, CurrentRoute.BusHeading)
                 With Bus
@@ -552,6 +620,10 @@ Public Class BusSim
                         .Color = BlipColor.Yellow
                         .ShowNumber(station.StationIndex)
                         .Name = station.StationName
+                        Select Case Difficult
+                            Case Difficulty.ExtremelyHard
+                                .Alpha = 0
+                        End Select
                     End With
                     If Not BlipDict.ContainsKey(station.StationIndex) Then BlipDict.Add(station.StationIndex, b)
                     If Not BlipList.Contains(b) Then BlipList.Add(b)
@@ -564,8 +636,13 @@ Public Class BusSim
                 PedRelationshipGroup = World.AddRelationshipGroup("BusPassengerGroup")
                 World.SetRelationshipBetweenGroups(Relationship.Companion, PedRelationshipGroup, Game.Player.Character.RelationshipGroup)
                 World.SetRelationshipBetweenGroups(Relationship.Companion, Game.Player.Character.RelationshipGroup, PedRelationshipGroup)
-                'Game.Player.Character.SetAsLeader()
+                Script.Wait(2000)
+                Game.FadeScreenIn(2000)
                 IsInGame = True
+            ElseIf selectedItem.Text = itemRoute.Text Then
+                RouteCamera = World.CreateCamera(RouteCameraPos, RouteCameraRot, GameplayCamera.FieldOfView)
+                MenuCamera.InterpTo(RouteCamera, 3000, True, True)
+                World.RenderingCamera = RouteCamera
             End If
         Catch ex As Exception
             Logger.Log(String.Format("(MainMenu_OnItemSelect): {0} {1}", ex.Message, ex.StackTrace))
@@ -597,7 +674,7 @@ Public Class BusSim
         Dim p As New Vector3(position.X, position.Y, position.Z - 1.0F)
         If size = Nothing Then size = New Vector3(2.0F, 2.0F, 3.0F)
         If color = Nothing Then color = Color.Yellow
-        World.DrawMarker(MarkerType.VerticalCylinder, p, p, Vector3.Zero, size, color)
+        World.DrawMarker(MarkerType.VerticalCylinder, p, p, Game.Player.Character.Rotation, size, color)
     End Sub
 
     Public Sub UpdateTimerBars()
@@ -644,21 +721,37 @@ Public Class BusSim
             Dim busText As New UIResText(CurrentRoute.RouteNumber, New Point(BusNum.Position.X + (BusNum.Size.Width / 2), BusNum.Position.Y), 0.3F, Color.White, GTA.Font.ChaletLondon, UIResText.Alignment.Centered) : busText.Outline = True : busText.Draw()
 
             Dim SD As New UIResRectangle(New Point(BusNum.Position.X + 1, BusNum.Position.Y + BusNum.Size.Height + 2), New Size(18, 18), If(Bus.IsSeatFree(VehicleSeat.Driver), Color.FromArgb(200, Color.LightGreen), Color.FromArgb(200, Color.White))) : SD.Draw()
+            Dim D As New UIResText("D", New Point(SD.Position.X + (SD.Size.Width / 2), SD.Position.Y), 0.2F, Color.Black, GTA.Font.ChaletLondon, UIResText.Alignment.Centered) : busText.Outline = True : D.Draw()
             Dim SP As New UIResRectangle(New Point(BusNum.Position.X + 22, BusNum.Position.Y + BusNum.Size.Height + 2), New Size(18, 18), If(Bus.IsSeatFree(VehicleSeat.Passenger), Color.FromArgb(200, Color.LightGreen), Color.FromArgb(200, Color.White))) : SP.Draw()
+            Dim P As New UIResText("P", New Point(SP.Position.X + (SP.Size.Width / 2), SP.Position.Y), 0.2F, Color.Black, GTA.Font.ChaletLondon, UIResText.Alignment.Centered) : busText.Outline = True : P.Draw()
             Dim SLR As New UIResRectangle(New Point(BusNum.Position.X + 1, BusNum.Position.Y + BusNum.Size.Height + 22), New Size(18, 18), If(Bus.IsSeatFree(VehicleSeat.LeftRear), Color.FromArgb(200, Color.LightGreen), Color.FromArgb(200, Color.White))) : SLR.Draw()
+            Dim LR As New UIResText("LR", New Point(SLR.Position.X + (SLR.Size.Width / 2), SLR.Position.Y), 0.2F, Color.Black, GTA.Font.ChaletLondon, UIResText.Alignment.Centered) : busText.Outline = True : LR.Draw()
             Dim SRR As New UIResRectangle(New Point(BusNum.Position.X + 22, BusNum.Position.Y + BusNum.Size.Height + 22), New Size(18, 18), If(Bus.IsSeatFree(VehicleSeat.RightRear), Color.FromArgb(200, Color.LightGreen), Color.FromArgb(200, Color.White))) : SRR.Draw()
+            Dim RR As New UIResText("RR", New Point(SRR.Position.X + (SRR.Size.Width / 2), SRR.Position.Y), 0.2F, Color.Black, GTA.Font.ChaletLondon, UIResText.Alignment.Centered) : busText.Outline = True : RR.Draw()
             Dim SE1 As New UIResRectangle(New Point(BusNum.Position.X + 1, BusNum.Position.Y + BusNum.Size.Height + 42), New Size(18, 18), If(Bus.IsSeatFree(VehicleSeat.ExtraSeat1), Color.FromArgb(200, Color.LightGreen), Color.FromArgb(200, Color.White))) : SE1.Draw()
+            Dim E1 As New UIResText("E1", New Point(SE1.Position.X + (SE1.Size.Width / 2), SE1.Position.Y), 0.2F, Color.Black, GTA.Font.ChaletLondon, UIResText.Alignment.Centered) : busText.Outline = True : E1.Draw()
             Dim SE2 As New UIResRectangle(New Point(BusNum.Position.X + 22, BusNum.Position.Y + BusNum.Size.Height + 42), New Size(18, 18), If(Bus.IsSeatFree(VehicleSeat.ExtraSeat2), Color.FromArgb(200, Color.LightGreen), Color.FromArgb(200, Color.White))) : SE2.Draw()
+            Dim E2 As New UIResText("E2", New Point(SE2.Position.X + (SE2.Size.Width / 2), SE2.Position.Y), 0.2F, Color.Black, GTA.Font.ChaletLondon, UIResText.Alignment.Centered) : busText.Outline = True : E2.Draw()
             Dim SE3 As New UIResRectangle(New Point(BusNum.Position.X + 1, BusNum.Position.Y + BusNum.Size.Height + 62), New Size(18, 18), If(Bus.IsSeatFree(VehicleSeat.ExtraSeat3), Color.FromArgb(200, Color.LightGreen), Color.FromArgb(200, Color.White))) : SE3.Draw()
+            Dim E3 As New UIResText("E3", New Point(SE3.Position.X + (SE3.Size.Width / 2), SE3.Position.Y), 0.2F, Color.Black, GTA.Font.ChaletLondon, UIResText.Alignment.Centered) : busText.Outline = True : E3.Draw()
             Dim SE4 As New UIResRectangle(New Point(BusNum.Position.X + 22, BusNum.Position.Y + BusNum.Size.Height + 62), New Size(18, 18), If(Bus.IsSeatFree(VehicleSeat.ExtraSeat4), Color.FromArgb(200, Color.LightGreen), Color.FromArgb(200, Color.White))) : SE4.Draw()
+            Dim E4 As New UIResText("E4", New Point(SE4.Position.X + (SE4.Size.Width / 2), SE4.Position.Y), 0.2F, Color.Black, GTA.Font.ChaletLondon, UIResText.Alignment.Centered) : busText.Outline = True : E4.Draw()
             Dim SE5 As New UIResRectangle(New Point(BusNum.Position.X + 1, BusNum.Position.Y + BusNum.Size.Height + 82), New Size(18, 18), If(Bus.IsSeatFree(VehicleSeat.ExtraSeat5), Color.FromArgb(200, Color.LightGreen), Color.FromArgb(200, Color.White))) : SE5.Draw()
+            Dim E5 As New UIResText("E5", New Point(SE5.Position.X + (SE5.Size.Width / 2), SE5.Position.Y), 0.2F, Color.Black, GTA.Font.ChaletLondon, UIResText.Alignment.Centered) : busText.Outline = True : E5.Draw()
             Dim SE6 As New UIResRectangle(New Point(BusNum.Position.X + 22, BusNum.Position.Y + BusNum.Size.Height + 82), New Size(18, 18), If(Bus.IsSeatFree(VehicleSeat.ExtraSeat6), Color.FromArgb(200, Color.LightGreen), Color.FromArgb(200, Color.White))) : SE6.Draw()
+            Dim E6 As New UIResText("E6", New Point(SE6.Position.X + (SE6.Size.Width / 2), SE6.Position.Y), 0.2F, Color.Black, GTA.Font.ChaletLondon, UIResText.Alignment.Centered) : busText.Outline = True : E6.Draw()
             Dim SE7 As New UIResRectangle(New Point(BusNum.Position.X + 1, BusNum.Position.Y + BusNum.Size.Height + 102), New Size(18, 18), If(Bus.IsSeatFree(VehicleSeat.ExtraSeat7), Color.FromArgb(200, Color.LightGreen), Color.FromArgb(200, Color.White))) : SE7.Draw()
+            Dim E7 As New UIResText("E7", New Point(SE7.Position.X + (SE7.Size.Width / 2), SE7.Position.Y), 0.2F, Color.Black, GTA.Font.ChaletLondon, UIResText.Alignment.Centered) : busText.Outline = True : E7.Draw()
             Dim SE8 As New UIResRectangle(New Point(BusNum.Position.X + 22, BusNum.Position.Y + BusNum.Size.Height + 102), New Size(18, 18), If(Bus.IsSeatFree(VehicleSeat.ExtraSeat8), Color.FromArgb(200, Color.LightGreen), Color.FromArgb(200, Color.White))) : SE8.Draw()
+            Dim E8 As New UIResText("E8", New Point(SE8.Position.X + (SE8.Size.Width / 2), SE8.Position.Y), 0.2F, Color.Black, GTA.Font.ChaletLondon, UIResText.Alignment.Centered) : busText.Outline = True : E8.Draw()
             Dim SE9 As New UIResRectangle(New Point(BusNum.Position.X + 1, BusNum.Position.Y + BusNum.Size.Height + 122), New Size(18, 18), If(Bus.IsSeatFree(VehicleSeat.ExtraSeat9), Color.FromArgb(200, Color.LightGreen), Color.FromArgb(200, Color.White))) : SE9.Draw()
+            Dim E9 As New UIResText("E9", New Point(SE9.Position.X + (SE9.Size.Width / 2), SE9.Position.Y), 0.2F, Color.Black, GTA.Font.ChaletLondon, UIResText.Alignment.Centered) : busText.Outline = True : E9.Draw()
             Dim SE10 As New UIResRectangle(New Point(BusNum.Position.X + 22, BusNum.Position.Y + BusNum.Size.Height + 122), New Size(18, 18), If(Bus.IsSeatFree(VehicleSeat.ExtraSeat10), Color.FromArgb(200, Color.LightGreen), Color.FromArgb(200, Color.White))) : SE10.Draw()
+            Dim E10 As New UIResText("E10", New Point(SE10.Position.X + (SE10.Size.Width / 2), SE10.Position.Y), 0.2F, Color.Black, GTA.Font.ChaletLondon, UIResText.Alignment.Centered) : busText.Outline = True : E10.Draw()
             Dim SE11 As New UIResRectangle(New Point(BusNum.Position.X + 1, BusNum.Position.Y + BusNum.Size.Height + 142), New Size(18, 18), If(Bus.IsSeatFree(VehicleSeat.ExtraSeat11), Color.FromArgb(200, Color.LightGreen), Color.FromArgb(200, Color.White))) : SE11.Draw()
+            Dim E11 As New UIResText("E11", New Point(SE11.Position.X + (SE11.Size.Width / 2), SE11.Position.Y), 0.2F, Color.Black, GTA.Font.ChaletLondon, UIResText.Alignment.Centered) : busText.Outline = True : E11.Draw()
             Dim SE12 As New UIResRectangle(New Point(BusNum.Position.X + 22, BusNum.Position.Y + BusNum.Size.Height + 142), New Size(18, 18), If(Bus.IsSeatFree(VehicleSeat.ExtraSeat12), Color.FromArgb(200, Color.LightGreen), Color.FromArgb(200, Color.White))) : SE12.Draw()
+            Dim E12 As New UIResText("E12", New Point(SE12.Position.X + (SE12.Size.Width / 2), SE12.Position.Y), 0.2F, Color.Black, GTA.Font.ChaletLondon, UIResText.Alignment.Centered) : busText.Outline = True : E12.Draw()
         Catch ex As Exception
             Logger.Log(String.Format("(DrawSeat): {0} {1}", ex.Message, ex.StackTrace))
         End Try
@@ -682,6 +775,16 @@ Public Class BusSim
             Dim AllLeaveGroup As New UIResText("AL", New Point(SLR.Position.X + (SLR.Size.Width / 2), SLR.Position.Y), 0.2F, Color.Black, GTA.Font.ChaletLondon, UIResText.Alignment.Centered) : busText.Outline = True : AllLeaveGroup.Draw()
             Dim SRR As New UIResRectangle(New Point(BusNum.Position.X + 22, BusNum.Position.Y + BusNum.Size.Height + 22), New Size(18, 18), If(Bus.IsSeatFree(VehicleSeat.RightRear), Color.FromArgb(200, Color.LightGreen), Color.FromArgb(200, Color.White))) : SRR.Draw()
             Dim DoorGroup As New UIResText("DR", New Point(SRR.Position.X + (SRR.Size.Width / 2), SRR.Position.Y), 0.2F, Color.Black, GTA.Font.ChaletLondon, UIResText.Alignment.Centered) : busText.Outline = True : DoorGroup.Draw()
+        Catch ex As Exception
+            Logger.Log(String.Format("(DrawSeat): {0} {1}", ex.Message, ex.StackTrace))
+        End Try
+    End Sub
+
+    Public Sub DrawBETACopyright()
+        Try
+            Dim SRMR As SizeF = UIMenu.GetScreenResolutionMaintainRatio
+            Dim SZB As Point = UIMenu.GetSafezoneBounds
+            Dim copy As New UIResText($"~g~Bus Simulator V ~w~BETA v{My.Application.Info.Version.ToString} ~b~Created by I'm Not MentaL & Yoha~n~~w~{My.Application.Info.Copyright}", New Point((SRMR.Width - SZB.X) / 2, SRMR.Height - SZB.Y - 60), 0.4F, Color.White, GTA.Font.ChaletComprimeCologne, UIResText.Alignment.Centered) : copy.Outline = True : copy.Draw()
         Catch ex As Exception
             Logger.Log(String.Format("(DrawSeat): {0} {1}", ex.Message, ex.StackTrace))
         End Try
@@ -734,16 +837,40 @@ Public Class BusSim
     End Sub
 
     Private Sub MainMenu_OnMenuClose(sender As UIMenu) Handles MainMenu.OnMenuClose
+        MenuCamera.InterpTo(StartCamera, 3000, True, True)
+        World.RenderingCamera = StartCamera
+        Script.Wait(3000)
         World.RenderingCamera = Nothing
         World.DestroyAllCameras()
     End Sub
 
     Private Sub BusSim_KeyUp(sender As Object, e As KeyEventArgs) Handles Me.KeyUp
-        If IsInGame AndAlso Not AutoDoors AndAlso Game.Player.Character.IsInVehicle(Bus) Then
-            If e.KeyCode = FrontLeftDoorK Then If Bus.IsDoorOpen(VehicleDoor.FrontLeftDoor) Then Bus.CloseDoor(VehicleDoor.FrontLeftDoor, False) Else Bus.OpenDoor(VehicleDoor.FrontLeftDoor, False, False)
-            If e.KeyCode = FrontRightDoorK Then If Bus.IsDoorOpen(VehicleDoor.FrontRightDoor) Then Bus.CloseDoor(VehicleDoor.FrontRightDoor, False) Else Bus.OpenDoor(VehicleDoor.FrontRightDoor, False, False)
-            If e.KeyCode = RearLeftDoorK Then If Bus.IsDoorOpen(VehicleDoor.BackLeftDoor) Then Bus.CloseDoor(VehicleDoor.BackLeftDoor, False) Else Bus.OpenDoor(VehicleDoor.BackLeftDoor, False, False)
-            If e.KeyCode = RearRightDoork Then If Bus.IsDoorOpen(VehicleDoor.BackRightDoor) Then Bus.CloseDoor(VehicleDoor.BackRightDoor, False) Else Bus.OpenDoor(VehicleDoor.BackRightDoor, False, False)
+        If IsInGame Then
+            If Not AutoDoors AndAlso Game.Player.Character.IsInVehicle(Bus) Then
+                If e.KeyCode = FrontLeftDoorK Then If Bus.IsDoorOpen(VehicleDoor.FrontLeftDoor) Then Bus.CloseDoor(VehicleDoor.FrontLeftDoor, False) Else Bus.OpenDoor(VehicleDoor.FrontLeftDoor, False, False)
+                If e.KeyCode = FrontRightDoorK Then If Bus.IsDoorOpen(VehicleDoor.FrontRightDoor) Then Bus.CloseDoor(VehicleDoor.FrontRightDoor, False) Else Bus.OpenDoor(VehicleDoor.FrontRightDoor, False, False)
+                If e.KeyCode = RearLeftDoorK Then If Bus.IsDoorOpen(VehicleDoor.BackLeftDoor) Then Bus.CloseDoor(VehicleDoor.BackLeftDoor, False) Else Bus.OpenDoor(VehicleDoor.BackLeftDoor, False, False)
+                If e.KeyCode = RearRightDoork Then If Bus.IsDoorOpen(VehicleDoor.BackRightDoor) Then Bus.CloseDoor(VehicleDoor.BackRightDoor, False) Else Bus.OpenDoor(VehicleDoor.BackRightDoor, False, False)
+            End If
         End If
     End Sub
+
+    Private Sub RouteMenu_OnIndexChange(sender As UIMenu, newIndex As Integer) Handles RouteMenu.OnIndexChange
+        Dim br As BusRoute = New BusRoute(sender.MenuItems(newIndex).SubString1)
+        br = br.ReadFromFile
+        If Not previewBus = Nothing Then previewBus.Delete()
+        previewBus = World.CreateVehicle(br.BusModel, New Vector3(421.5408, -641.575, 27.4958), 180.1512)
+        With previewBus
+            .RemoveAllExtras()
+            If .ExtraExists(br.TurnOnExtra) Then .ToggleExtra(br.TurnOnExtra, True)
+            .EngineRunning = True
+        End With
+    End Sub
+
+    Private Sub RouteMenu_OnMenuClose(sender As UIMenu) Handles RouteMenu.OnMenuClose
+        RouteCamera.InterpTo(MenuCamera, 3000, True, True)
+        World.RenderingCamera = MenuCamera
+        If Not previewBus = Nothing Then previewBus.Delete()
+    End Sub
+
 End Class

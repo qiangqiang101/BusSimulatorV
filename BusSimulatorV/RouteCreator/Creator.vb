@@ -235,7 +235,7 @@ Public Class Creator
             StationInfoMenu.MenuItems.Clear()
 
             StationInfoMenu.Stat1 = itemToBind.SubInteger1
-            itemSIndex = New UIMenuItem("Index", "Index of the Station. Note: Number Must be unique.") With {.SubInteger1 = itemToBind.SubInteger1} : itemSIndex.SetRightLabel(itemToBind.SubInteger1) : StationInfoMenu.AddItem(itemSIndex)
+            itemSIndex = New UIMenuItem("Index", "Index of the Station. Note: Number Must be unique.") With {.SubInteger1 = itemToBind.SubInteger1, .SubInteger2 = itemToBind.SubInteger1} : itemSIndex.SetRightLabel(itemToBind.SubInteger1) : StationInfoMenu.AddItem(itemSIndex)
             itemSName = New UIMenuItem("Name", "Name of the Station.") With {.SubString1 = itemToBind.SubString4} : itemSName.SetRightLabel(itemToBind.SubString4) : StationInfoMenu.AddItem(itemSName)
             itemSCoords = New UIMenuColoredItem("Position", "Position of the Station.", Color.CadetBlue, Color.DodgerBlue) With {.SubString1 = itemToBind.SubString1, .SubString2 = itemToBind.SubString2, .SubString3 = itemToBind.SubString3} : itemSCoords.SetRightLabel(">") : StationInfoMenu.AddItem(itemSCoords)
 
@@ -324,6 +324,7 @@ Public Class Creator
             Dim playerPos As New Vector3(CSng(itemRPSpawn.SubString1), CSng(itemRPSpawn.SubString2), CSng(itemRPSpawn.SubString3))
             Dim busPos As New Vector3(CSng(itemRBSpawn.SubString1), CSng(itemRBSpawn.SubString2), CSng(itemRBSpawn.SubString3))
             Dim stations As List(Of Station) = CurrentRoute.Stations
+            'stations = stations.OrderBy(Function(x) x.StationIndex).ToList()
             CurrentRoute = New BusRoute(fileName, itemRName.SubString1, itemRNum.SubInteger1, playerPos, busPos, itemRBHead.SubString1, itemRBModel.SubString1, stations, itemRFare.SubInteger1)
             With CurrentRoute
                 .Author = itemRAuthor.SubString1
@@ -380,17 +381,35 @@ Public Class Creator
                 cr.Description = Game.GetUserInput(itemRDesc.SubString1, 65535)
                 itemRDesc.SetRightLabel(">") : itemRDesc.SubString1 = cr.Description
             Case itemRExtra.Text
-                cr.TurnOnExtra = Game.GetUserInput(itemRExtra.SubInteger1.ToString, 65535)
-                itemRExtra.SetRightLabel(cr.TurnOnExtra) : itemRExtra.SubInteger1 = cr.TurnOnExtra
+                Dim temp = Game.GetUserInput(itemRExtra.SubInteger1.ToString, 65535)
+                If IsNumeric(temp) Then
+                    cr.TurnOnExtra = temp
+                    itemRExtra.SetRightLabel(cr.TurnOnExtra) : itemRExtra.SubInteger1 = cr.TurnOnExtra
+                Else
+                    UI.Notify("Please Enter Valid Number.")
+                    Exit Sub
+                End If
+                'cr.TurnOnExtra = Game.GetUserInput(itemRExtra.SubInteger1.ToString, 65535)
             Case itemRFare.Text
-                cr.RouteFare = Game.GetUserInput(itemRFare.SubInteger1.ToString, 65535)
-                itemRFare.SetRightLabel(cr.RouteFare) : itemRFare.SubInteger1 = cr.RouteFare
+                Dim temp = Game.GetUserInput(itemRFare.SubInteger1.ToString, 65535)
+                If IsNumeric(temp) Then
+                    cr.RouteFare = temp
+                    itemRFare.SetRightLabel(cr.RouteFare) : itemRFare.SubInteger1 = cr.RouteFare
+                Else
+
+                End If
             Case itemRName.Text
                 cr.RouteName = Game.GetUserInput(itemRName.SubString1, 65535)
                 itemRName.SetRightLabel(cr.RouteName) : itemRName.SubString1 = cr.RouteName
             Case itemRNum.Text
-                cr.RouteNumber = Game.GetUserInput(itemRNum.SubInteger1.ToString, 65535)
-                itemRNum.SetRightLabel(cr.RouteNumber) : itemRNum.SubInteger1 = cr.RouteNumber
+                Dim temp = Game.GetUserInput(itemRNum.SubInteger1.ToString, 65535)
+                If IsNumeric(temp) Then
+                    cr.RouteNumber = temp
+                    itemRNum.SetRightLabel(cr.RouteNumber) : itemRNum.SubInteger1 = cr.RouteNumber
+                Else
+                    UI.Notify("Please Enter Valid Number.")
+                    Exit Sub
+                End If
             Case itemRPSpawn.Text
                 CreatorMenu.BindMenuToItem(Vector3Menu, itemRPSpawn)
                 RefreshVector3Menu(CreatorMenu, itemRPSpawn)
@@ -409,32 +428,79 @@ Public Class Creator
     End Sub
 
     Private Sub StationInfoMenu_OnItemSelect(sender As UIMenu, selectedItem As UIMenuItem, index As Integer) Handles StationInfoMenu.OnItemSelect
-        Dim cs As Station = CurrentRoute.Stations(itemSIndex.SubInteger1)
+        Dim cs As Station = CurrentRoute.Stations(itemSIndex.SubInteger2)
 
         Select Case selectedItem.Text
             Case itemSIndex.Text
-                cs.StationIndex = Game.GetUserInput(itemSIndex.SubInteger1.ToString, 65535)
-                itemSIndex.SetRightLabel(cs.StationIndex) : itemSIndex.SubInteger1 = cs.StationIndex
+                Dim temp = Game.GetUserInput(itemSIndex.SubInteger1.ToString, 65535)
+                If IsNumeric(temp) Then
+                    If temp <= CurrentRoute.TotalStation - 1 Then
+                        If temp >= 0 Then
+                            Dim si = temp
+                            itemSIndex.SetRightLabel(si) : itemSIndex.SubInteger1 = CInt(si)
+                        Else
+                            UI.Notify("Index cannot less than 0.")
+                            Exit Sub
+                        End If
+                    Else
+                        UI.Notify($"Index cannot greater than {CurrentRoute.TotalStation - 1}.")
+                        Exit Sub
+                    End If
+                Else
+                    UI.Notify("Please Enter Valid Number.")
+                    Exit Sub
+                End If
             Case itemSName.Text
-                cs.StationName = Game.GetUserInput(itemSName.SubString1, 65535)
-                itemSName.SetRightLabel(cs.StationName) : itemSName.SubString1 = cs.StationName
+                Dim sn = Game.GetUserInput(itemSName.SubString1, 65535)
+                itemSName.SetRightLabel(sn) : itemSName.SubString1 = sn
             Case itemSCoords.Text
                 StationInfoMenu.BindMenuToItem(Vector3Menu, itemSCoords)
                 RefreshVector3Menu(StationInfoMenu, itemSCoords)
         End Select
     End Sub
 
+    Private Sub StationInfoMenu_OnMenuClose(sender As UIMenu) Handles StationInfoMenu.OnMenuClose
+        Dim oldStation As Station = CurrentRoute.Stations(itemSIndex.SubInteger2)
+        Dim newStation As New Station(itemSIndex.SubInteger1, itemSName.SubString1, New Vector3(CSng(itemSCoords.SubString1), CSng(itemSCoords.SubString2), CSng(itemSCoords.SubString3)))
+        CurrentRoute.Stations.Remove(oldStation)
+        CurrentRoute.Stations.Add(newStation)
+
+        CurrentRoute.Stations = CurrentRoute.Stations.OrderBy(Function(x) x.StationIndex).ToList()
+        RefreshStationMenu()
+    End Sub
+
     Private Sub Vector3Menu_OnItemSelect(sender As UIMenu, selectedItem As UIMenuItem, index As Integer) Handles Vector3Menu.OnItemSelect
         Select Case selectedItem.Text
             Case itemX.Text
-                itemX.SubString1 = Game.GetUserInput(itemX.SubString1, 65535)
-                itemX.SetRightLabel(itemX.SubString1)
+                Dim temp = Game.GetUserInput(itemX.SubString1, 65535)
+                Dim sng As Single
+                If Single.TryParse(temp, sng) Then
+                    itemX.SubString1 = temp
+                    itemX.SetRightLabel(itemX.SubString1)
+                Else
+                    UI.Notify("Please Enter Valid Float/Single.")
+                    Exit Sub
+                End If
             Case itemY.Text
-                itemY.SubString1 = Game.GetUserInput(itemY.SubString1, 65535)
-                itemY.SetRightLabel(itemY.SubString1)
+                Dim temp = Game.GetUserInput(itemY.SubString1, 65535)
+                Dim sng As Single
+                If Single.TryParse(temp, sng) Then
+                    itemY.SubString1 = temp
+                    itemY.SetRightLabel(itemY.SubString1)
+                Else
+                    UI.Notify("Please Enter Valid Float/Single.")
+                    Exit Sub
+                End If
             Case itemZ.Text
-                itemZ.SubString1 = Game.GetUserInput(itemZ.SubString1, 65535)
-                itemZ.SetRightLabel(itemZ.SubString1)
+                Dim temp = Game.GetUserInput(itemZ.SubString1, 65535)
+                Dim sng As Single
+                If Single.TryParse(temp, sng) Then
+                    itemZ.SubString1 = temp
+                    itemZ.SetRightLabel(itemZ.SubString1)
+                Else
+                    UI.Notify("Please Enter Valid Float/Single.")
+                    Exit Sub
+                End If
         End Select
     End Sub
 
@@ -480,11 +546,11 @@ Public Class Creator
                 If Game.Player.Character.IsInVehicle Then
                     itemX.SubString1 = Game.Player.Character.LastVehicle.Position.X : itemX.SetRightLabel(Game.Player.Character.LastVehicle.Position.X.ToString)
                     itemY.SubString1 = Game.Player.Character.LastVehicle.Position.Y : itemY.SetRightLabel(Game.Player.Character.LastVehicle.Position.Y.ToString)
-                    itemZ.SubString1 = Game.Player.Character.LastVehicle.Position.Z : itemZ.SetRightLabel(Game.Player.Character.LastVehicle.Position.Z.ToString)
+                    itemZ.SubString1 = Game.Player.Character.LastVehicle.Position.Z - 1.0F : itemZ.SetRightLabel((Game.Player.Character.LastVehicle.Position.Z - 1.0F).ToString)
                 Else
                     itemX.SubString1 = Game.Player.Character.Position.X : itemX.SetRightLabel(Game.Player.Character.Position.X.ToString)
                     itemY.SubString1 = Game.Player.Character.Position.Y : itemY.SetRightLabel(Game.Player.Character.Position.Y.ToString)
-                    itemZ.SubString1 = Game.Player.Character.Position.Z : itemZ.SetRightLabel(Game.Player.Character.Position.Z.ToString)
+                    itemZ.SubString1 = Game.Player.Character.Position.Z - 1.0F : itemZ.SetRightLabel((Game.Player.Character.Position.Z - 1.0F).ToString)
                 End If
             End If
         End If

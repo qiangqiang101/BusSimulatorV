@@ -331,7 +331,7 @@ Module Helper
                         If bus.HasBone("misc_x") Then World.DrawLightWithRange(bus.GetBoneCoord("misc_x"), Color.White, 2.7, 5.0)
                         If bus.HasBone("misc_y") Then World.DrawLightWithRange(bus.GetBoneCoord("misc_y"), Color.White, 2.7, 5.0)
                         If bus.HasBone("misc_z") Then World.DrawLightWithRange(bus.GetBoneCoord("misc_z"), Color.White, 2.7, 5.0)
-                    Else
+                    ElseIf bus.HasBone("misc_g") AndAlso bus.HasBone("misc_h") AndAlso bus.HasBone("misc_i") AndAlso bus.HasBone("misc_j") Then
                         If bus.HasBone("misc_g") Then World.DrawLightWithRange(bus.GetBoneCoord("misc_g"), Color.White, 2.7, 5.0)
                         If bus.HasBone("misc_h") Then World.DrawLightWithRange(bus.GetBoneCoord("misc_h"), Color.White, 2.7, 5.0)
                         If bus.HasBone("misc_i") Then World.DrawLightWithRange(bus.GetBoneCoord("misc_i"), Color.White, 2.7, 5.0)
@@ -344,7 +344,7 @@ Module Helper
 
     <Extension()>
     Public Function IsPedTooFarAwayFrom(ped As Ped, bus As Vehicle) As Boolean
-        Return World.GetDistance(bus.Position, ped.Position) >= 25.0F
+        If World.GetDistance(bus.Position, ped.Position) > 25.0F Then Return True Else Return False
     End Function
 
     <Extension()>
@@ -386,6 +386,13 @@ Module Helper
                 Return bus.GetBoneCoord(0)
         End Select
     End Function
+
+    Public Sub DrawingSeat(uiRect As UIResRectangle, uiText As UIResText, bus As Vehicle, pos As Point, textString As String, seat As VehicleSeat)
+        If bus.PassengerSeats >= (seat + 1) Then
+            Dim Rect As New UIResRectangle(pos, New Size(18, 18), If(bus.IsSeatFree(seat), Color.FromArgb(200, Color.LightGreen), Color.FromArgb(200, Color.White))) : Rect.Draw()
+            Dim Text As New UIResText(textString, New Point(Rect.Position.X + (Rect.Size.Width / 2), Rect.Position.Y), 0.2F, Color.Black, GTA.Font.ChaletLondon, UIResText.Alignment.Centered) : Text.Outline = True : Text.Draw()
+        End If
+    End Sub
 
     Public Enum Difficulty
         Normal

@@ -14,14 +14,14 @@ Public Class BusSimTimer
         If Not PassengerPedGroup.Count = 0 AndAlso Not Bus = Nothing Then
             If Bus.IsAnyDoorOpen AndAlso Bus.SpeedMPH = 0 Then
                 For Each ped As Ped In PassengerPedGroup
-                    If Not ped.IsInVehicle(Bus) AndAlso Not ped.IsRunning Then
-                        If Bus.IsVehicleFull OrElse ped.IsPedTooFarAwayFrom(Bus) Then
-                            ped.CurrentBlip.Remove()
-                            PassengerPedGroup.Remove(ped)
-                            Earned -= CurrentRoute.RouteFare
-                            Return
-                        End If
-                        ped.Task.ClearAll()
+                    If Not ped.IsSittingInVehicle(Bus) AndAlso Not ped.IsRunning Then
+                        Select Case True
+                            Case Bus.IsVehicleFull, ped.IsPedTooFarAwayFrom(Bus)
+                                ped.CurrentBlip.Remove()
+                                PassengerPedGroup.Remove(ped)
+                                Earned -= CurrentRoute.RouteFare
+                                Return
+                        End Select
                         If Not Bus.IsSeatFree(ped.Seat) Then ped.Task.EnterVehicle(Bus, Bus.GetEmptySeat, 15000, 2.0, EnterBusFlag.None) Else ped.Task.EnterVehicle(Bus, ped.Seat, 15000, 2.0, EnterBusFlag.None)
                         ped.AlwaysKeepTask = True
                         Script.Wait(500)

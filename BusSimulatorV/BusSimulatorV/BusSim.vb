@@ -429,7 +429,7 @@ Public Class BusSim
                 For Each ped As Ped In Bus.Passengers
                     If Not LeavedPassengerPedGroup.Contains(ped) Then
                         ped.StopPedFlee
-                        ped.Task.LookAt(Game.Player.Character)
+                        'ped.Task.LookAt(Game.Player.Character)
                         ped.RelationshipGroup = PedRelationshipGroup
                         ped.CurrentBlip.Alpha = 0
                     End If
@@ -444,15 +444,10 @@ Public Class BusSim
                         blip.Remove()
                     Next
                     CurrentStationIndex = 0
-                    'For Each ped As Ped In PassengerPedGroup
-                    '    LeavedPassengerPedGroup.Add(ped)
-                    '    ped.Task.ClearAll()
-                    '    PassengerPedGroup.Remove(ped)
-                    'Next
                     PassengerPedGroup.Clear()
                     LeavedPassengerPedGroup.Clear()
                     LastStationPassengerPedGroup.Clear()
-
+                    Earned = 0
                     IsInGame = False
                     BlipDict.Clear()
                     BlipList.Clear()
@@ -473,15 +468,10 @@ Public Class BusSim
                         blip.Remove()
                     Next
                     CurrentStationIndex = 0
-                    'For Each ped As Ped In PassengerPedGroup
-                    '    LeavedPassengerPedGroup.Add(ped)
-                    '    ped.Task.ClearAll()
-                    '    PassengerPedGroup.Remove(ped)
-                    'Next
                     PassengerPedGroup.Clear()
                     LeavedPassengerPedGroup.Clear()
                     LastStationPassengerPedGroup.Clear()
-
+                    Earned = 0
                     IsInGame = False
                     BlipDict.Clear()
                     BlipList.Clear()
@@ -583,7 +573,7 @@ Public Class BusSim
                     If Not PassengerPedGroup.Count >= Bus.PassengerSeats Then
                         Dim pedCount As Integer = 0, maxPed As Integer = 3
                         For Each ped As Ped In World.GetNearbyPeds(CurrentRoute.Stations(CurrentStationIndex - 1).StationCoords, 20.0F)
-                            If pedCount < maxPed AndAlso Not ped = Game.Player.Character AndAlso ped.IsHuman AndAlso Not ped.IsInVehicle() Then
+                            If pedCount < maxPed AndAlso Not ped = Game.Player.Character AndAlso ped.IsHuman AndAlso Not ped.IsInVehicle() AndAlso Not ped.IsProne AndAlso Not ped.IsHooker Then
                                 If Not PassengerPedGroup.Contains(ped) Then
                                     ped.StopPedFlee
                                     ped.RelationshipGroup = PedRelationshipGroup
@@ -599,6 +589,7 @@ Public Class BusSim
                                         .Name = passenger
                                     End With
                                     PassengerPedGroup.Add(ped)
+                                    ped.Task.ClearAllImmediately()
                                     pedCount += 1
                                     Earned += CurrentRoute.RouteFare
                                 End If

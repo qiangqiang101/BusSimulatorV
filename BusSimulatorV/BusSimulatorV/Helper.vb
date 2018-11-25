@@ -401,6 +401,17 @@ Module Helper
         ExtremelyHard
     End Enum
 
+    <Extension()>
+    Public Sub StartScenarioInPlace(ped As Ped, scenario As String, playEnterAnim As Boolean)
+        Native.Function.Call(Hash.TASK_START_SCENARIO_IN_PLACE, ped.Handle, scenario, -1, playEnterAnim)
+    End Sub
+
+    Dim hooker As New List(Of Model) From {PedHash.Hooker01SFY, PedHash.Hooker02SFY, PedHash.Hooker03SFY, PedHash.DeadHooker}
+    <Extension()>
+    Public Function IsHooker(ped As Ped) As Boolean
+        Return hooker.Contains(ped.Model)
+    End Function
+
 End Module
 
 Public Class ObjectiveItem

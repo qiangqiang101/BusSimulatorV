@@ -47,6 +47,9 @@ Public Class BusSim
     Public FrontLeftDoorJ, FrontRightDoorJ, RearLeftDoorJ, RearRightDoorJ, ModifierJ As GTA.Control
     Public FrontLeftDoorK, FrontRightDoorK, RearLeftDoorK, RearRightDoork As Keys
     Dim Difficult As Difficulty = Difficulty.Normal
+    Dim random As New Random()
+    Dim leaveCount As Integer = 0
+    Dim bellSounded As Boolean = False
 
     'Translate Text
     Dim bus_depot, author, version, description, final_station, passenger, next_station, help_text
@@ -219,15 +222,17 @@ Public Class BusSim
                 If File.Exists(xmlFile) Then
                     Dim br As BusRoute = New BusRoute(xmlFile)
                     br = br.ReadFromFile
-                    itemMRoute = New UIMenuItem(Path.GetFileNameWithoutExtension(xmlFile))
+                    itemMRoute = New UIMenuItem(br.RouteName)
                     With itemMRoute
                         .SubString1 = xmlFile
+                        .SubInteger1 = br.RouteNumber
                         .Description = $"{author}: {br.Author}~n~{version}: {br.Version}~n~{description}: {br.Description}                                                                                                                                                                                                                                    "
                     End With
                     RouteMenu.AddItem(itemMRoute)
                 End If
             Next
             RouteMenu.RefreshIndex()
+            RouteMenu.MenuItems = RouteMenu.MenuItems.OrderBy(Function(x) x.SubInteger1).ToList
             MainMenu.BindMenuToItem(RouteMenu, itemRoute)
         Catch ex As Exception
             Logger.Log(String.Format("(CreateRouteMenu): {0} {1}", ex.Message, ex.StackTrace))
@@ -242,15 +247,17 @@ Public Class BusSim
                 If File.Exists(xmlFile) Then
                     Dim br As BusRoute = New BusRoute(xmlFile)
                     br = br.ReadFromFile
-                    itemMRoute = New UIMenuItem(Path.GetFileNameWithoutExtension(xmlFile))
+                    itemMRoute = New UIMenuItem(br.RouteName)
                     With itemMRoute
                         .SubString1 = xmlFile
+                        .SubInteger1 = br.RouteNumber
                         .Description = $"{author}: {br.Author}~n~{version}: {br.Version}~n~{description}: {br.Description}                                                                                                                                                                                                                                    "
                     End With
                     RouteMenu.AddItem(itemMRoute)
                 End If
             Next
             RouteMenu.RefreshIndex()
+            RouteMenu.MenuItems = RouteMenu.MenuItems.OrderBy(Function(x) x.SubInteger1).ToList
             MainMenu.BindMenuToItem(RouteMenu, itemRoute)
         Catch ex As Exception
             Logger.Log(String.Format("(RefreshRouteMenu): {0} {1}", ex.Message, ex.StackTrace))
@@ -264,7 +271,7 @@ Public Class BusSim
             CurrentRoute = br
 
             itemPlay.Enabled = True
-            itemRoute.SetRightLabel(selectedItem.Text)
+            itemRoute.SetRightLabel(selectedItem.SubInteger1)
             For Each item As UIMenuItem In sender.MenuItems
                 item.SetRightBadge(UIMenuItem.BadgeStyle.None)
             Next
@@ -335,8 +342,8 @@ Public Class BusSim
         End If
 
         If IsInGame Then
-            If Not DebugMode Then DrawBETACopyright()
             Bus.TurnBusInteriorLightsOn
+            If Not DebugMode Then DrawBETACopyright()
 
             If Game.Player.Character.IsInVehicle(Bus) Then
                 Select Case Difficult
@@ -355,48 +362,59 @@ Public Class BusSim
             End If
 
             If AutoDoors AndAlso Bus.EngineRunning Then
-                For Each passenger As Ped In LeavedPassengerPedGroup
-                    door1 = passenger.IsInVehicle(Bus)
-                Next
-                For Each passenger As Ped In LastStationPassengerPedGroup
-                    door3 = passenger.IsInVehicle(Bus)
-                Next
-                For Each passenger As Ped In PassengerPedGroup
-                    door2 = Not passenger.IsInVehicle(Bus)
-                Next
+                If LeavedPassengerPedGroup.Count <> 0 Then
+                    For Each passenger As Ped In LeavedPassengerPedGroup
+                        door1 = passenger.IsInVehicle(Bus)
+                    Next
+                Else
+                    door1 = False
+                End If
+                If LastStationPassengerPedGroup.Count <> 0 Then
+                    For Each passenger As Ped In LastStationPassengerPedGroup
+                        door3 = passenger.IsInVehicle(Bus)
+                    Next
+                Else door3 = False
+                End If
+                If PassengerPedGroup.Count <> 0 Then
+                    For Each passenger As Ped In PassengerPedGroup
+                        door2 = Not passenger.IsInVehicle(Bus)
+                    Next
+                Else
+                    door2 = False
+                End If
 
                 If Not door1 AndAlso Not door2 AndAlso Not door3 Then               'no no no
-                    door = False
-                ElseIf Not door1 AndAlso Not door2 AndAlso door3 Then               'no no yes
-                    door = True
-                ElseIf Not door1 AndAlso door2 AndAlso door3 Then                   'no yes yes
-                    door = True
-                ElseIf door1 AndAlso door2 AndAlso door3 Then                       'yes yes yes
-                    door = True
-                ElseIf Not door1 AndAlso door2 AndAlso Not door3 Then               'no yes no
-                    door = True
-                ElseIf door1 AndAlso door2 AndAlso Not door3 Then                   'yes yes no
-                    door = True
-                ElseIf door1 AndAlso Not door2 AndAlso door3 Then                   'yes no yes
-                    door = True
-                ElseIf door1 AndAlso Not door2 AndAlso Not door3 Then               'yes no no
-                    door = True
+                        door = False
+                    ElseIf Not door1 AndAlso Not door2 AndAlso door3 Then               'no no yes
+                        door = True
+                    ElseIf Not door1 AndAlso door2 AndAlso door3 Then                   'no yes yes
+                        door = True
+                    ElseIf door1 AndAlso door2 AndAlso door3 Then                       'yes yes yes
+                        door = True
+                    ElseIf Not door1 AndAlso door2 AndAlso Not door3 Then               'no yes no
+                        door = True
+                    ElseIf door1 AndAlso door2 AndAlso Not door3 Then                   'yes yes no
+                        door = True
+                    ElseIf door1 AndAlso Not door2 AndAlso door3 Then                   'yes no yes
+                        door = True
+                    ElseIf door1 AndAlso Not door2 AndAlso Not door3 Then               'yes no no
+                        door = True
+                    End If
+
+                    If door Then
+                        If Not Bus.IsDoorOpen(VehicleDoor.BackLeftDoor) Then Bus.OpenDoor(VehicleDoor.BackLeftDoor, False, False)
+                        If Not Bus.IsDoorOpen(VehicleDoor.BackRightDoor) Then Bus.OpenDoor(VehicleDoor.BackRightDoor, False, False)
+                        If Not Bus.IsDoorOpen(VehicleDoor.FrontLeftDoor) Then Bus.OpenDoor(VehicleDoor.FrontLeftDoor, False, False)
+                        If Not Bus.IsDoorOpen(VehicleDoor.FrontRightDoor) Then Bus.OpenDoor(VehicleDoor.FrontRightDoor, False, False)
+                    Else
+                        If Bus.IsDoorOpen(VehicleDoor.BackLeftDoor) Then Bus.CloseDoor(VehicleDoor.BackLeftDoor, False)
+                        If Bus.IsDoorOpen(VehicleDoor.BackRightDoor) Then Bus.CloseDoor(VehicleDoor.BackRightDoor, False)
+                        If Bus.IsDoorOpen(VehicleDoor.FrontLeftDoor) Then Bus.CloseDoor(VehicleDoor.FrontLeftDoor, False)
+                        If Bus.IsDoorOpen(VehicleDoor.FrontRightDoor) Then Bus.CloseDoor(VehicleDoor.FrontRightDoor, False)
+                    End If
                 End If
 
-                If door Then
-                    If Not Bus.IsDoorOpen(VehicleDoor.BackLeftDoor) Then Bus.OpenDoor(VehicleDoor.BackLeftDoor, False, False)
-                    If Not Bus.IsDoorOpen(VehicleDoor.BackRightDoor) Then Bus.OpenDoor(VehicleDoor.BackRightDoor, False, False)
-                    If Not Bus.IsDoorOpen(VehicleDoor.FrontLeftDoor) Then Bus.OpenDoor(VehicleDoor.FrontLeftDoor, False, False)
-                    If Not Bus.IsDoorOpen(VehicleDoor.FrontRightDoor) Then Bus.OpenDoor(VehicleDoor.FrontRightDoor, False, False)
-                Else
-                    If Bus.IsDoorOpen(VehicleDoor.BackLeftDoor) Then Bus.CloseDoor(VehicleDoor.BackLeftDoor, False)
-                    If Bus.IsDoorOpen(VehicleDoor.BackRightDoor) Then Bus.CloseDoor(VehicleDoor.BackRightDoor, False)
-                    If Bus.IsDoorOpen(VehicleDoor.FrontLeftDoor) Then Bus.CloseDoor(VehicleDoor.FrontLeftDoor, False)
-                    If Bus.IsDoorOpen(VehicleDoor.FrontRightDoor) Then Bus.CloseDoor(VehicleDoor.FrontRightDoor, False)
-                End If
-            End If
-
-            If Brakelights Then
+                If Brakelights Then
                 If Bus.SpeedMPH = 0 AndAlso Not Game.IsControlPressed(0, GTA.Control.VehicleBrake) Then
                     Bus.BrakeLightsOn = True
                 ElseIf Bus.SpeedMPH < 0 AndAlso Game.IsControlPressed(0, GTA.Control.VehicleBrake) Then
@@ -486,10 +504,26 @@ Public Class BusSim
                 End Try
             End If
 
-            If Bus.Position.DistanceTo(CurrentRoute.Stations(CurrentStationIndex).StationCoords) <= 20.0F Then
+            If Bus.Position.DistanceTo(CurrentRoute.Stations(CurrentStationIndex).StationCoords) <= 50.0F Then
+                If Not bellSounded Then 'If Not Bus.IsSeatFree(VehicleSeat.Passenger) Then
+                    leaveCount = random.Next(0, 3)
+                    If Not Bus.IsSeatFree(VehicleSeat.Passenger) Then
+                        SoundPlayer("scripts\BusSimulatorV\Sound\bell.wav", 100)
+                        bellSounded = True
+                    Else
+                        If PassengerPedGroup.Count <> 0 AndAlso leaveCount <> 0 Then
+                            SoundPlayer("scripts\BusSimulatorV\Sound\bell.wav", 100)
+                            bellSounded = True
+                        End If
+                    End If
+                End If
+            End If
+
+            If Bus.Position.DistanceTo(CurrentRoute.Stations(CurrentStationIndex).StationCoords) <= 10.0F Then
                 Dim b As Blip = BlipDict.Item(CurrentStationIndex)
                 BlipDict.Remove(CurrentStationIndex)
                 b.Remove()
+                bellSounded = False
 
                 If Not CurrentStationIndex = CurrentRoute.TotalStation Then CurrentStationIndex += 1
 
@@ -534,13 +568,6 @@ Public Class BusSim
                     Bus.OpenDoor(VehicleDoor.BackLeftDoor, False, False)
                     Bus.OpenDoor(VehicleDoor.BackRightDoor, False, False)
                 Else
-                    Dim random As New Random()
-                    Dim leaveCount = random.Next(0, 3)
-
-                    If PassengerPedGroup.Count <> 0 AndAlso leaveCount <> 0 Then
-                        SoundPlayer("scripts\BusSimulatorV\Sound\bell.wav", 70)
-                    End If
-
                     b = BlipDict.Item(CurrentStationIndex)
                     Select Case Difficult
                         Case Difficulty.Normal, Difficulty.Hard
@@ -573,7 +600,7 @@ Public Class BusSim
                     If Not PassengerPedGroup.Count >= Bus.PassengerSeats Then
                         Dim pedCount As Integer = 0, maxPed As Integer = 3
                         For Each ped As Ped In World.GetNearbyPeds(CurrentRoute.Stations(CurrentStationIndex - 1).StationCoords, 20.0F)
-                            If pedCount < maxPed AndAlso Not ped = Game.Player.Character AndAlso ped.IsHuman AndAlso Not ped.IsInVehicle() AndAlso Not ped.IsProne AndAlso Not ped.IsHooker Then
+                            If pedCount < maxPed AndAlso Not ped = Game.Player.Character AndAlso ped.IsHuman AndAlso Not ped.IsInVehicle() AndAlso Not ped.IsProne AndAlso Not ped.IsHooker AndAlso Not World.CalculateTravelDistance(Bus.Position, ped.Position) >= 20.0F Then
                                 If Not PassengerPedGroup.Contains(ped) Then
                                     ped.StopPedFlee
                                     ped.RelationshipGroup = PedRelationshipGroup
@@ -704,6 +731,17 @@ Public Class BusSim
                 RouteCamera = World.CreateCamera(RouteCameraPos, RouteCameraRot, GameplayCamera.FieldOfView)
                 MenuCamera.InterpTo(RouteCamera, 3000, True, True)
                 World.RenderingCamera = RouteCamera
+                If Not RouteMenu.MenuItems.Count = 0 Then
+                    Dim br As BusRoute = New BusRoute(RouteMenu.MenuItems(0).SubString1)
+                    br = br.ReadFromFile
+                    If Not previewBus = Nothing Then previewBus.Delete()
+                    previewBus = World.CreateVehicle(br.BusModel, New Vector3(421.5408, -641.575, 27.4958), 180.1512)
+                    With previewBus
+                        .RemoveAllExtras()
+                        If .ExtraExists(br.TurnOnExtra) Then .ToggleExtra(br.TurnOnExtra, True)
+                        .EngineRunning = True
+                    End With
+                End If
             End If
         Catch ex As Exception
             Logger.Log(String.Format("(MainMenu_OnItemSelect): {0} {1}", ex.Message, ex.StackTrace))

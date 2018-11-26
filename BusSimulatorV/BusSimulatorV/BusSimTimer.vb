@@ -6,13 +6,15 @@ Imports GTA.Math
 Public Class BusSimTimer
     Inherits Script
 
+    Dim turnpike As Model = 1230099731
+
     Public Sub New()
     End Sub
 
     Private Sub FixPedEnterBus()
-        'On Error Resume Next
+        On Error Resume Next
         If Not PassengerPedGroup.Count = 0 AndAlso Not Bus = Nothing Then
-            If Bus.IsAnyDoorOpen AndAlso Bus.SpeedMPH = 0 Then
+            If Bus.IsAnyDoorOpen Then
                 For Each ped As Ped In PassengerPedGroup
                     If Not ped.IsSittingInVehicle(Bus) AndAlso Not ped.IsRunning Then
                         Select Case True
@@ -54,9 +56,30 @@ Public Class BusSimTimer
         End If
     End Sub
 
+    Private Sub WorkingTurnPikes()
+        On Error Resume Next
+        'If Not Bus = Nothing Then
+        '    Dim tp As Prop = World.GetClosest(Of Prop)(Bus.FrontBumper, World.GetNearbyProps(Bus.FrontBumper, 20.0F, turnpike))
+        '    If Not tp = Nothing Then
+        '        If Bus.SpeedMPH <= 10 AndAlso Bus.Position.DistanceTo(tp.Position) <= 20.0F Then
+        '            tp.ApplyForceRelative(tp.UpVector)
+        '        End If
+        '    End If
+        'End If
+        If Not Bus = Nothing Then
+            Dim tp As Prop = World.GetClosest(Of Prop)(Bus.FrontBumper, World.GetNearbyProps(Bus.FrontBumper, 20.0F, turnpike))
+            If Not tp = Nothing Then
+                If Bus.FrontBumper.DistanceTo(tp.Position) <= 20.0F Then
+                    tp.SetPropDoor(False)
+                End If
+            End If
+        End If
+    End Sub
+
     Private Sub BusSimTimer_Tick(sender As Object, e As EventArgs) Handles Me.Tick
         FixPedEnterBus()
         PedAutoShufferingSeat()
+        WorkingTurnPikes()
     End Sub
 End Class
 
@@ -72,7 +95,6 @@ Public Class BusSimTimer2
         If Not LeavedPassengerPedGroup.Count = 0 AndAlso Not Bus = Nothing Then
             If Bus.IsAnyDoorOpen Then
                 For Each ped As Ped In LeavedPassengerPedGroup
-                    If DebugMode Then World.DrawMarker(MarkerType.UpsideDownCone, Bus.GetSeatPosition(ped.SeatIndex), Bus.GetSeatPosition(ped.SeatIndex), Bus.Rotation, New Vector3(0.3F, 0.3F, 0.3F), Color.Red)
                     ped.CurrentBlip.Remove()
                     If Not ped.IsInVehicle(Bus) Then
                         LeavedPassengerPedGroup.Remove(ped)

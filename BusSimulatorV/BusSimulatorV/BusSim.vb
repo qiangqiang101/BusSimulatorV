@@ -332,7 +332,6 @@ Public Class BusSim
             Game.DisableControlThisFrame(0, GTA.Control.Jump)
             Game.DisableControlThisFrame(0, GTA.Control.Cover)
             Game.DisableControlThisFrame(0, GTA.Control.Context)
-            DrawBETACopyright()
         End If
 
         If RouteMenu.Visible Then
@@ -343,7 +342,6 @@ Public Class BusSim
 
         If IsInGame Then
             Bus.TurnBusInteriorLightsOn
-            If Not DebugMode Then DrawBETACopyright()
 
             If Game.Player.Character.IsInVehicle(Bus) Then
                 Select Case Difficult

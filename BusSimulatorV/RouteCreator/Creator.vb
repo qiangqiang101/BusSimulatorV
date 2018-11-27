@@ -317,31 +317,32 @@ Public Class Creator
         If selectedItem Is itemSave Then
             Dim fileName As String = Nothing
             If CurrentRoute.RouteFileName = Nothing Then
-                fileName = $"scripts\BusSimulatorV\Route\{Game.GetUserInput($"New.xml", 65535)}"
+                fileName = $"scripts\BusSimulatorV\Route\{Game.GetUserInput($"{CurrentRoute.RouteNumber}.xml", 65535)}"
             Else
                 fileName = $"scripts\BusSimulatorV\Route\{Game.GetUserInput(IO.Path.GetFileName(CurrentRoute.RouteFileName), 65535)}"
             End If
+            If fileName = "" Then fileName = $"scripts\BusSimulatorV\Route\{Game.GetUserInput($"{CurrentRoute.RouteNumber}.xml", 65535)}"
             Dim playerPos As New Vector3(CSng(itemRPSpawn.SubString1), CSng(itemRPSpawn.SubString2), CSng(itemRPSpawn.SubString3))
-            Dim busPos As New Vector3(CSng(itemRBSpawn.SubString1), CSng(itemRBSpawn.SubString2), CSng(itemRBSpawn.SubString3))
-            Dim stations As List(Of Station) = CurrentRoute.Stations
-            'stations = stations.OrderBy(Function(x) x.StationIndex).ToList()
-            CurrentRoute = New BusRoute(fileName, itemRName.SubString1, itemRNum.SubInteger1, playerPos, busPos, itemRBHead.SubString1, itemRBModel.SubString1, stations, itemRFare.SubInteger1)
-            With CurrentRoute
-                .Author = itemRAuthor.SubString1
-                .Version = itemRVersion.SubString1
-                .Description = itemRDesc.SubString1
-                .TurnOnExtra = itemRExtra.SubInteger1
-                .BusHeading = CSng(itemRBHead.SubString1)
-            End With
-            CurrentRoute.Save()
-            UI.Notify($"{CurrentRoute.RouteName} saved successfully.")
-            CurrentRoute = Nothing
-            UpdateMainMenu()
-            RefreshRouteMenu()
-            RefreshCreatorMenu()
-            RefreshStationMenu()
-        ElseIf selectedItem Is itemNew Then
-            CurrentRoute.Stations = New List(Of Station)
+                Dim busPos As New Vector3(CSng(itemRBSpawn.SubString1), CSng(itemRBSpawn.SubString2), CSng(itemRBSpawn.SubString3))
+                Dim stations As List(Of Station) = CurrentRoute.Stations
+                'stations = stations.OrderBy(Function(x) x.StationIndex).ToList()
+                CurrentRoute = New BusRoute(fileName, itemRName.SubString1, itemRNum.SubInteger1, playerPos, busPos, itemRBHead.SubString1, itemRBModel.SubString1, stations, itemRFare.SubInteger1)
+                With CurrentRoute
+                    .Author = itemRAuthor.SubString1
+                    .Version = itemRVersion.SubString1
+                    .Description = itemRDesc.SubString1
+                    .TurnOnExtra = itemRExtra.SubInteger1
+                    .BusHeading = CSng(itemRBHead.SubString1)
+                End With
+                CurrentRoute.Save()
+                UI.Notify($"{CurrentRoute.RouteName} saved successfully.")
+                CurrentRoute = Nothing
+                UpdateMainMenu()
+                RefreshRouteMenu()
+                RefreshCreatorMenu()
+                RefreshStationMenu()
+            ElseIf selectedItem Is itemNew Then
+                CurrentRoute.Stations = New List(Of Station)
             RefreshCreatorMenu()
             RefreshStationMenu()
             itemEdit.Enabled = True

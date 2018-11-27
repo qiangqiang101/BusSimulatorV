@@ -330,21 +330,20 @@ Module Helper
         b3 = random.Next(0, 500)
         b4 = random.Next(0, 500)
         If bus.EngineRunning Then
-            Select Case World.CurrentDayTime.Hours
-                Case 19, 20, 21, 22, 23, 0, 1, 2, 3, 4, 5, 6, 7
-                    If bus.HasBone("misc_w") AndAlso bus.HasBone("misc_x") AndAlso bus.HasBone("misc_y") AndAlso bus.HasBone("misc_z") Then
-                        If bus.HasBone("misc_w") AndAlso Not b1 = 1 Then World.DrawLightWithRange(bus.GetBoneCoord("misc_w"), Color.White, 2.7, 5.0)
-                        If bus.HasBone("misc_x") AndAlso Not b2 = 1 Then World.DrawLightWithRange(bus.GetBoneCoord("misc_x"), Color.White, 2.7, 5.0)
-                        If bus.HasBone("misc_y") AndAlso Not b3 = 1 Then World.DrawLightWithRange(bus.GetBoneCoord("misc_y"), Color.White, 2.7, 5.0)
-                        If bus.HasBone("misc_z") AndAlso Not b4 = 1 Then World.DrawLightWithRange(bus.GetBoneCoord("misc_z"), Color.White, 2.7, 5.0)
-                    ElseIf bus.HasBone("misc_g") AndAlso bus.HasBone("misc_h") AndAlso bus.HasBone("misc_i") AndAlso bus.HasBone("misc_j") Then
-                        If bus.HasBone("misc_g") AndAlso Not b1 = 1 Then World.DrawLightWithRange(bus.GetBoneCoord("misc_g"), Color.White, 2.7, 5.0)
-                        If bus.HasBone("misc_h") AndAlso Not b2 = 1 Then World.DrawLightWithRange(bus.GetBoneCoord("misc_h"), Color.White, 2.7, 5.0)
-                        If bus.HasBone("misc_i") AndAlso Not b3 = 1 Then World.DrawLightWithRange(bus.GetBoneCoord("misc_i"), Color.White, 2.7, 5.0)
-                        If bus.HasBone("misc_j") AndAlso Not b4 = 1 Then World.DrawLightWithRange(bus.GetBoneCoord("misc_j"), Color.White, 2.7, 5.0)
-                    End If
-                    bus.InteriorLightOn = True
-            End Select
+            If bus.LightsOn Then
+                If bus.HasBone("misc_w") AndAlso bus.HasBone("misc_x") AndAlso bus.HasBone("misc_y") AndAlso bus.HasBone("misc_z") Then
+                    If bus.HasBone("misc_w") AndAlso Not b1 = 1 Then World.DrawLightWithRange(bus.GetBoneCoord("misc_w"), Color.White, 2.7, 5.0)
+                    If bus.HasBone("misc_x") AndAlso Not b2 = 1 Then World.DrawLightWithRange(bus.GetBoneCoord("misc_x"), Color.White, 2.7, 5.0)
+                    If bus.HasBone("misc_y") AndAlso Not b3 = 1 Then World.DrawLightWithRange(bus.GetBoneCoord("misc_y"), Color.White, 2.7, 5.0)
+                    If bus.HasBone("misc_z") AndAlso Not b4 = 1 Then World.DrawLightWithRange(bus.GetBoneCoord("misc_z"), Color.White, 2.7, 5.0)
+                ElseIf bus.HasBone("misc_g") AndAlso bus.HasBone("misc_h") AndAlso bus.HasBone("misc_i") AndAlso bus.HasBone("misc_j") Then
+                    If bus.HasBone("misc_g") AndAlso Not b1 = 1 Then World.DrawLightWithRange(bus.GetBoneCoord("misc_g"), Color.White, 2.7, 5.0)
+                    If bus.HasBone("misc_h") AndAlso Not b2 = 1 Then World.DrawLightWithRange(bus.GetBoneCoord("misc_h"), Color.White, 2.7, 5.0)
+                    If bus.HasBone("misc_i") AndAlso Not b3 = 1 Then World.DrawLightWithRange(bus.GetBoneCoord("misc_i"), Color.White, 2.7, 5.0)
+                    If bus.HasBone("misc_j") AndAlso Not b4 = 1 Then World.DrawLightWithRange(bus.GetBoneCoord("misc_j"), Color.White, 2.7, 5.0)
+                End If
+                bus.InteriorLightOn = True
+            End If
         End If
     End Sub
 

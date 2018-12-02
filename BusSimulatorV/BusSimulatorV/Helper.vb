@@ -329,23 +329,29 @@ Module Helper
         b2 = random.Next(0, 500)
         b3 = random.Next(0, 500)
         b4 = random.Next(0, 500)
-        If bus.EngineRunning Then
+        If bus.EngineRunning AndAlso Not bus.IsDead Then
             If bus.LightsOn Then
                 If bus.HasBone("misc_w") AndAlso bus.HasBone("misc_x") AndAlso bus.HasBone("misc_y") AndAlso bus.HasBone("misc_z") Then
-                    If bus.HasBone("misc_w") AndAlso Not b1 = 1 Then World.DrawLightWithRange(bus.GetBoneCoord("misc_w"), Color.White, 2.7, 5.0)
-                    If bus.HasBone("misc_x") AndAlso Not b2 = 1 Then World.DrawLightWithRange(bus.GetBoneCoord("misc_x"), Color.White, 2.7, 5.0)
-                    If bus.HasBone("misc_y") AndAlso Not b3 = 1 Then World.DrawLightWithRange(bus.GetBoneCoord("misc_y"), Color.White, 2.7, 5.0)
-                    If bus.HasBone("misc_z") AndAlso Not b4 = 1 Then World.DrawLightWithRange(bus.GetBoneCoord("misc_z"), Color.White, 2.7, 5.0)
+                    If bus.HasBone("misc_w") AndAlso Not b1 = 1 Then World.DrawLightWithRange(bus.GetBoneCoord2("misc_w"), Color.White, 2.3, 5.0)
+                    If bus.HasBone("misc_x") AndAlso Not b2 = 1 Then World.DrawLightWithRange(bus.GetBoneCoord2("misc_x"), Color.White, 2.3, 5.0)
+                    If bus.HasBone("misc_y") AndAlso Not b3 = 1 Then World.DrawLightWithRange(bus.GetBoneCoord2("misc_y"), Color.White, 2.3, 5.0)
+                    If bus.HasBone("misc_z") AndAlso Not b4 = 1 Then World.DrawLightWithRange(bus.GetBoneCoord2("misc_z"), Color.White, 2.3, 5.0)
                 ElseIf bus.HasBone("misc_g") AndAlso bus.HasBone("misc_h") AndAlso bus.HasBone("misc_i") AndAlso bus.HasBone("misc_j") Then
-                    If bus.HasBone("misc_g") AndAlso Not b1 = 1 Then World.DrawLightWithRange(bus.GetBoneCoord("misc_g"), Color.White, 2.7, 5.0)
-                    If bus.HasBone("misc_h") AndAlso Not b2 = 1 Then World.DrawLightWithRange(bus.GetBoneCoord("misc_h"), Color.White, 2.7, 5.0)
-                    If bus.HasBone("misc_i") AndAlso Not b3 = 1 Then World.DrawLightWithRange(bus.GetBoneCoord("misc_i"), Color.White, 2.7, 5.0)
-                    If bus.HasBone("misc_j") AndAlso Not b4 = 1 Then World.DrawLightWithRange(bus.GetBoneCoord("misc_j"), Color.White, 2.7, 5.0)
+                    If bus.HasBone("misc_g") AndAlso Not b1 = 1 Then World.DrawLightWithRange(bus.GetBoneCoord2("misc_g"), Color.White, 2.3, 5.0)
+                    If bus.HasBone("misc_h") AndAlso Not b2 = 1 Then World.DrawLightWithRange(bus.GetBoneCoord2("misc_h"), Color.White, 2.3, 5.0)
+                    If bus.HasBone("misc_i") AndAlso Not b3 = 1 Then World.DrawLightWithRange(bus.GetBoneCoord2("misc_i"), Color.White, 2.3, 5.0)
+                    If bus.HasBone("misc_j") AndAlso Not b4 = 1 Then World.DrawLightWithRange(bus.GetBoneCoord2("misc_j"), Color.White, 2.3, 5.0)
                 End If
                 bus.InteriorLightOn = True
             End If
         End If
     End Sub
+
+    <Extension()>
+    Public Function GetBoneCoord2(entity As Entity, bone As String) As Vector3
+        Dim bc As Vector3 = entity.GetBoneCoord(bone)
+        Return New Vector3(bc.X, bc.Y, bc.Z - 0.5F)
+    End Function
 
     <Extension()>
     Public Function IsPedTooFarAwayFrom(ped As Ped, bus As Vehicle) As Boolean
@@ -422,15 +428,84 @@ Module Helper
         If bus.HasBone("bumper_f") Then Return bus.GetBoneCoord("bumper_f") Else Return bus.Position
     End Function
 
-    Dim buses As New List(Of Model) From {VehicleHash.Bus, VehicleHash.Airbus, VehicleHash.Coach}
     <Extension()>
     Public Function IsBus(bus As Vehicle) As Boolean
-        Return buses.Contains(bus.Model)
+        If bus.PassengerSeats >= 9 AndAlso bus.ClassType = VehicleClass.Service Then
+            Return True
+        Else
+            Return False
+        End If
     End Function
 
     <Extension()>
     Public Sub SetPropDoor(prop As Prop, close As Boolean)
         Native.Function.Call(Hash._DOOR_CONTROL, prop.Model, prop.Position.X, prop.Position.Y, prop.Position.Z, close, 0F, 50.0F, 0F)
+    End Sub
+
+    Public Function IsNamedRenderTargetRegistered(prop_ex_bus_text As String) As Boolean
+        Return Native.Function.Call(Of Boolean)(Hash.IS_NAMED_RENDERTARGET_REGISTERED, prop_ex_bus_text)
+    End Function
+
+    Public Sub RegisterNamedRenderTarget(prop_ex_bus_text As String)
+        Native.Function.Call(Hash.REGISTER_NAMED_RENDERTARGET, prop_ex_bus_text, False)
+    End Sub
+
+    Public Sub ReleaseNamedRenderTarget(prop_ex_bus_text As String)
+        Native.Function.Call(Hash.RELEASE_NAMED_RENDERTARGET, prop_ex_bus_text)
+    End Sub
+
+    Public Function GetNamedRenderTargetRenderId(prop_ex_bus_text As String) As Integer
+        Return Native.Function.Call(Of Integer)(Hash.GET_NAMED_RENDERTARGET_RENDER_ID, prop_ex_bus_text)
+    End Function
+
+    Public Sub SetTextRenderId(id As Integer)
+        Native.Function.Call(Hash.SET_TEXT_RENDER_ID, id)
+    End Sub
+
+    <Extension()>
+    Public Function IsNamedRenderTargetLinked(ex_prop_ex_bus_text As Prop) As Boolean
+        Return Native.Function.Call(Of Boolean)(Hash.IS_NAMED_RENDERTARGET_LINKED, ex_prop_ex_bus_text.Model)
+    End Function
+
+    <Extension()>
+    Public Sub LinkNamedRenderTarget(ex_prop_ex_bus_text As Prop)
+        Native.Function.Call(Hash.LINK_NAMED_RENDERTARGET, ex_prop_ex_bus_text.Model)
+    End Sub
+
+    <Extension()>
+    Public Sub SetText(scaleform As Scaleform, prop As Prop, text As String)
+        scaleform.CallFunction("SET_ORGANISATION_NAME", text, -1, 0, 7)
+        If Not IsNamedRenderTargetRegistered("prop_ex_office_text") Then
+            RegisterNamedRenderTarget("prop_ex_office_text")
+            prop.LinkNamedRenderTarget
+            If Not prop.IsNamedRenderTargetLinked Then
+                ReleaseNamedRenderTarget("prop_ex_office_text")
+            End If
+        End If
+    End Sub
+
+    <Extension()>
+    Public Sub DrawText(scaleform As Scaleform, prop As Prop)
+        If scaleform.IsValid Then
+            Dim bus As Vehicle = prop.GetEntityAttachedTo
+            Dim id As Integer = GetNamedRenderTargetRenderId("prop_ex_office_text")
+            SetTextRenderId(id)
+            If World.GetDistance(Bus.Position, Game.Player.Character.Position) < 25.0F Then
+                scaleform.Render2DScreenSpace(New PointF(0.196 * 1.75, 0.345 * 1.5), New SizeF(0.46 * 2.5, 0.66 * 2.5))
+            End If
+        End If
+    End Sub
+
+    <Extension()>
+    Public Sub DrawText(scaleform As Scaleform, bus As Vehicle)
+        If scaleform.IsValid Then
+            Dim id As Integer = GetNamedRenderTargetRenderId("prop_ex_office_text")
+            SetTextRenderId(id)
+            If World.GetDistance(bus.Position, Game.Player.Character.Position) < 25.0F Then
+                'scaleform.Render2DScreenSpace(New PointF(0.196 * 1.75, 0.345 * 1.5), New SizeF(0.46 * 2.5, 0.66 * 2.5))
+                scaleform.Render2DScreenSpace(New PointF(0F, 0F), New SizeF(0F, 0F))
+            End If
+        End If
     End Sub
 End Module
 

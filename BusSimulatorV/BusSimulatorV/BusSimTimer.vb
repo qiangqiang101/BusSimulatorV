@@ -6,7 +6,7 @@ Imports GTA.Math
 Public Class BusSimTimer
     Inherits Script
 
-    Dim turnpike As Model = 1230099731
+    Public Shared buses As New List(Of Vehicle)
 
     Public Sub New()
     End Sub
@@ -56,30 +56,13 @@ Public Class BusSimTimer
         End If
     End Sub
 
-    Private Sub WorkingTurnPikes()
-        On Error Resume Next
-        'If Not Bus = Nothing Then
-        '    Dim tp As Prop = World.GetClosest(Of Prop)(Bus.FrontBumper, World.GetNearbyProps(Bus.FrontBumper, 20.0F, turnpike))
-        '    If Not tp = Nothing Then
-        '        If Bus.SpeedMPH <= 10 AndAlso Bus.Position.DistanceTo(tp.Position) <= 20.0F Then
-        '            tp.ApplyForceRelative(tp.UpVector)
-        '        End If
-        '    End If
-        'End If
-        If Not Bus = Nothing Then
-            Dim tp As Prop = World.GetClosest(Of Prop)(Bus.FrontBumper, World.GetNearbyProps(Bus.FrontBumper, 20.0F, turnpike))
-            If Not tp = Nothing Then
-                If Bus.FrontBumper.DistanceTo(tp.Position) <= 20.0F Then
-                    tp.SetPropDoor(False)
-                End If
-            End If
-        End If
-    End Sub
-
     Private Sub BusSimTimer_Tick(sender As Object, e As EventArgs) Handles Me.Tick
         FixPedEnterBus()
         PedAutoShufferingSeat()
-        WorkingTurnPikes()
+
+        For Each bas As Vehicle In buses
+            bas.TurnBusInteriorLightsOn
+        Next
     End Sub
 End Class
 

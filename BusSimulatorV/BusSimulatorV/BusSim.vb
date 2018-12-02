@@ -22,7 +22,7 @@ Public Class BusSim
     Public config As ScriptSettings = ScriptSettings.Load("scripts\BusSimulatorV\config.ini")
     Public language As ScriptSettings = ScriptSettings.Load($"scripts\BusSimulatorV\Language\{Game.Language.ToString("f")}.ini")
     Public Shared Earned As Integer = 0
-    Public Shared Bus, previewBus As Vehicle
+    Public Shared Bus, previewBus As Vehicle ', TextProp As Prop
     Public IsInGame As Boolean = False
     Public PlayerOriginalPosition, PlayerOriginalRotation As Vector3
     Public EarnedTimerBar, SpeedTimerBar, NextStationTimerBar, StationTimerBar As TextTimerBar
@@ -50,6 +50,7 @@ Public Class BusSim
     Dim random As New Random()
     Dim leaveCount As Integer = 0
     Dim bellSounded As Boolean = False
+    'Dim busScaleform As New Scaleform("ORGANISATION_NAME")
 
     'Translate Text
     Dim bus_depot, author, version, description, final_station, passenger, next_station, help_text
@@ -340,8 +341,16 @@ Public Class BusSim
             End If
         End If
 
+        For Each busAndCoach In World.GetNearbyVehicles(Game.Player.Character, 50.0F)
+            If busAndCoach.IsBus AndAlso busAndCoach.IsAlive Then
+                If Not BusSimTimer.buses.Contains(busAndCoach) Then
+                    BusSimTimer.buses.Add(busAndCoach)
+                End If
+            End If
+        Next
+
         If IsInGame Then
-            Bus.TurnBusInteriorLightsOn
+            'busScaleform.DrawText(Bus)
 
             If Game.Player.Character.IsInVehicle(Bus) Then
                 Select Case Difficult
@@ -382,37 +391,37 @@ Public Class BusSim
                 End If
 
                 If Not door1 AndAlso Not door2 AndAlso Not door3 Then               'no no no
-                        door = False
-                    ElseIf Not door1 AndAlso Not door2 AndAlso door3 Then               'no no yes
-                        door = True
-                    ElseIf Not door1 AndAlso door2 AndAlso door3 Then                   'no yes yes
-                        door = True
-                    ElseIf door1 AndAlso door2 AndAlso door3 Then                       'yes yes yes
-                        door = True
-                    ElseIf Not door1 AndAlso door2 AndAlso Not door3 Then               'no yes no
-                        door = True
-                    ElseIf door1 AndAlso door2 AndAlso Not door3 Then                   'yes yes no
-                        door = True
-                    ElseIf door1 AndAlso Not door2 AndAlso door3 Then                   'yes no yes
-                        door = True
-                    ElseIf door1 AndAlso Not door2 AndAlso Not door3 Then               'yes no no
-                        door = True
-                    End If
-
-                    If door Then
-                        If Not Bus.IsDoorOpen(VehicleDoor.BackLeftDoor) Then Bus.OpenDoor(VehicleDoor.BackLeftDoor, False, False)
-                        If Not Bus.IsDoorOpen(VehicleDoor.BackRightDoor) Then Bus.OpenDoor(VehicleDoor.BackRightDoor, False, False)
-                        If Not Bus.IsDoorOpen(VehicleDoor.FrontLeftDoor) Then Bus.OpenDoor(VehicleDoor.FrontLeftDoor, False, False)
-                        If Not Bus.IsDoorOpen(VehicleDoor.FrontRightDoor) Then Bus.OpenDoor(VehicleDoor.FrontRightDoor, False, False)
-                    Else
-                        If Bus.IsDoorOpen(VehicleDoor.BackLeftDoor) Then Bus.CloseDoor(VehicleDoor.BackLeftDoor, False)
-                        If Bus.IsDoorOpen(VehicleDoor.BackRightDoor) Then Bus.CloseDoor(VehicleDoor.BackRightDoor, False)
-                        If Bus.IsDoorOpen(VehicleDoor.FrontLeftDoor) Then Bus.CloseDoor(VehicleDoor.FrontLeftDoor, False)
-                        If Bus.IsDoorOpen(VehicleDoor.FrontRightDoor) Then Bus.CloseDoor(VehicleDoor.FrontRightDoor, False)
-                    End If
+                    door = False
+                ElseIf Not door1 AndAlso Not door2 AndAlso door3 Then               'no no yes
+                    door = True
+                ElseIf Not door1 AndAlso door2 AndAlso door3 Then                   'no yes yes
+                    door = True
+                ElseIf door1 AndAlso door2 AndAlso door3 Then                       'yes yes yes
+                    door = True
+                ElseIf Not door1 AndAlso door2 AndAlso Not door3 Then               'no yes no
+                    door = True
+                ElseIf door1 AndAlso door2 AndAlso Not door3 Then                   'yes yes no
+                    door = True
+                ElseIf door1 AndAlso Not door2 AndAlso door3 Then                   'yes no yes
+                    door = True
+                ElseIf door1 AndAlso Not door2 AndAlso Not door3 Then               'yes no no
+                    door = True
                 End If
 
-                If Brakelights Then
+                If door Then
+                    If Not Bus.IsDoorOpen(VehicleDoor.BackLeftDoor) Then Bus.OpenDoor(VehicleDoor.BackLeftDoor, False, False)
+                    If Not Bus.IsDoorOpen(VehicleDoor.BackRightDoor) Then Bus.OpenDoor(VehicleDoor.BackRightDoor, False, False)
+                    If Not Bus.IsDoorOpen(VehicleDoor.FrontLeftDoor) Then Bus.OpenDoor(VehicleDoor.FrontLeftDoor, False, False)
+                    If Not Bus.IsDoorOpen(VehicleDoor.FrontRightDoor) Then Bus.OpenDoor(VehicleDoor.FrontRightDoor, False, False)
+                Else
+                    If Bus.IsDoorOpen(VehicleDoor.BackLeftDoor) Then Bus.CloseDoor(VehicleDoor.BackLeftDoor, False)
+                    If Bus.IsDoorOpen(VehicleDoor.BackRightDoor) Then Bus.CloseDoor(VehicleDoor.BackRightDoor, False)
+                    If Bus.IsDoorOpen(VehicleDoor.FrontLeftDoor) Then Bus.CloseDoor(VehicleDoor.FrontLeftDoor, False)
+                    If Bus.IsDoorOpen(VehicleDoor.FrontRightDoor) Then Bus.CloseDoor(VehicleDoor.FrontRightDoor, False)
+                End If
+            End If
+
+            If Brakelights Then
                 If Bus.SpeedMPH = 0 AndAlso Not Game.IsControlPressed(0, GTA.Control.VehicleBrake) Then
                     Bus.BrakeLightsOn = True
                 ElseIf Bus.SpeedMPH < 0 AndAlso Game.IsControlPressed(0, GTA.Control.VehicleBrake) Then
@@ -651,6 +660,8 @@ Public Class BusSim
         Me.Dispose()
 
         If Not Bus = Nothing Then Bus.Delete()
+        'If Not TextProp = Nothing Then TextProp.Delete()
+
         For Each blip As Blip In BlipList
             blip.Remove()
         Next
@@ -694,6 +705,13 @@ Public Class BusSim
                     .PlaceOnGround()
                     .Repair()
                 End With
+                'If Not TextProp = Nothing Then TextProp.Delete()
+                'TextProp = World.CreateProp("ex_prop_ex_office_text", Bus.GetBoneCoord("extra_1"), False, False)
+                'With TextProp
+                '    .IsPersistent = True
+                '    .AttachTo(Bus, Bus.GetBoneIndex("extra_1"), Vector3.Zero, Vector3.Zero)
+                '    busScaleform.SetText(TextProp, "test")
+                'End With
 
                 PlayerOriginalPosition = Game.Player.Character.Position
                 PlayerOriginalRotation = Game.Player.Character.Rotation

@@ -61,6 +61,16 @@ Module Helper
     End Function
 
     <Extension()>
+    Public Function MaxSpeedMPH(ByVal vehicle As Vehicle) As Single
+        Return (Native.Function.Call(Of Single)(Hash._0xF417C2502FFFED43, vehicle.Model.Hash) * 3600) / 1609.344
+    End Function
+
+    <Extension()>
+    Public Function MaxSpeedKPH(ByVal vehicle As Vehicle) As Single
+        Return vehicle.MaxSpeedMPH * 1.609344
+    End Function
+
+    <Extension()>
     Public Sub Show(ByVal uimenu As UIMenu)
         uimenu.Visible = True
     End Sub
@@ -317,7 +327,7 @@ Module Helper
     End Sub
 
     <Extension()>
-    Private Function GetHashKey(str As String) As Integer
+    Public Function GetHashKey(str As String) As Integer
         Return Native.Function.Call(Of Integer)(Hash.GET_HASH_KEY, str)
     End Function
 
@@ -430,7 +440,7 @@ Module Helper
 
     <Extension()>
     Public Function IsBus(bus As Vehicle) As Boolean
-        If bus.PassengerSeats >= 9 AndAlso bus.ClassType = VehicleClass.Service Then
+        If bus.PassengerSeats > 9 AndAlso bus.ClassType = VehicleClass.Service Then
             Return True
         Else
             Return False
@@ -507,6 +517,10 @@ Module Helper
             End If
         End If
     End Sub
+
+    Public Function IsDLCInstalled() As Boolean
+        Return Native.Function.Call(Of Boolean)(Hash.IS_DLC_PRESENT, "bussim".GetHashKey)
+    End Function
 End Module
 
 Public Class ObjectiveItem

@@ -6,8 +6,6 @@ Imports GTA.Math
 Public Class BusSimTimer
     Inherits Script
 
-    Public Shared buses As New List(Of Vehicle)
-
     Public Sub New()
     End Sub
 
@@ -59,10 +57,6 @@ Public Class BusSimTimer
     Private Sub BusSimTimer_Tick(sender As Object, e As EventArgs) Handles Me.Tick
         FixPedEnterBus()
         PedAutoShufferingSeat()
-
-        For Each bas As Vehicle In buses
-            bas.TurnBusInteriorLightsOn
-        Next
     End Sub
 End Class
 

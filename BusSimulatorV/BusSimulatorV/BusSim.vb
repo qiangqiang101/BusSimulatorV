@@ -25,7 +25,7 @@ Public Class BusSim
     Public Shared Bus, previewBus As Vehicle ', TextProp As Prop
     Public IsInGame As Boolean = False
     Public PlayerOriginalPosition, PlayerOriginalRotation As Vector3
-    Public EarnedTimerBar, SpeedTimerBar, NextStationTimerBar, StationTimerBar As TextTimerBar
+    Public EarnedTimerBar, NextStationTimerBar As TextTimerBar, StationTimerBar, SpeedTimerBar As BarTimerBar
     Public Shared CurrentStationIndex As Integer = 0
     Public BlipDict As New Dictionary(Of Integer, Blip)
     Public BlipList As New List(Of Blip)
@@ -186,6 +186,7 @@ Public Class BusSim
         With ModBlip
             .IsShortRange = True
             .Sprite = BlipSprite.Bus
+            .Color = 54
             .Name = bus_depot
         End With
 
@@ -205,6 +206,14 @@ Public Class BusSim
             itemRoute = New UIMenuItem(select_route, String.Format(select_route_desc, Directory.GetFiles("scripts\BusSimulatorV\Route", "*.xml").Count)) : MainMenu.AddItem(itemRoute)
             itemDifficulty = New UIMenuItem(difficulty_level, difficulty_level_desc) : itemDifficulty.SetRightLabel(normal) : MainMenu.AddItem(itemDifficulty)
             itemPlay = New UIMenuItem(start_mission, start_mission_desc) With {.Enabled = False} : MainMenu.AddItem(itemPlay)
+            If Not IsDLCInstalled() Then
+                Dim itemWarning As New UIMenuColoredItem("Bus Simulator V DLC not detect!", "Bus Simulator V DLC isn't Install, did you forgot add <Item>dlcpacks:/bussim/</Item> in your dlclist.xml? The Bus Stop won't spawn and Bus LED Sign won't work without it.", Color.DarkRed, Color.PaleVioletRed)
+                With itemWarning
+                    .Enabled = False
+                    .SetRightBadge(UIMenuItem.BadgeStyle.Alert)
+                End With
+                MainMenu.AddItem(itemWarning)
+            End If
             MainMenu.RefreshIndex()
         Catch ex As Exception
             Logger.Log(String.Format("(CreateMainMenu): {0} {1}", ex.Message, ex.StackTrace))
@@ -316,7 +325,6 @@ Public Class BusSim
     End Sub
 
     Private Sub BusSim_Tick(sender As Object, e As EventArgs) Handles Me.Tick
-        'Try
         _menuPool.ProcessMenus()
 
         If _menuPool.IsAnyMenuOpen Then
@@ -340,14 +348,6 @@ Public Class BusSim
                 RefreshRouteMenu()
             End If
         End If
-
-        For Each busAndCoach In World.GetNearbyVehicles(Game.Player.Character, 50.0F)
-            If busAndCoach.IsBus AndAlso busAndCoach.IsAlive Then
-                If Not BusSimTimer.buses.Contains(busAndCoach) Then
-                    BusSimTimer.buses.Add(busAndCoach)
-                End If
-            End If
-        Next
 
         If IsInGame Then
             'busScaleform.DrawText(Bus)
@@ -512,7 +512,7 @@ Public Class BusSim
             End If
 
             If Bus.Position.DistanceTo(CurrentRoute.Stations(CurrentStationIndex).StationCoords) <= 50.0F Then
-                If Not bellSounded Then 'If Not Bus.IsSeatFree(VehicleSeat.Passenger) Then
+                If Not bellSounded Then
                     leaveCount = random.Next(0, 3)
                     If Not Bus.IsSeatFree(VehicleSeat.Passenger) Then
                         SoundPlayer("scripts\BusSimulatorV\Sound\bell.wav", 100)
@@ -526,7 +526,7 @@ Public Class BusSim
                 End If
             End If
 
-            If Bus.Position.DistanceTo(CurrentRoute.Stations(CurrentStationIndex).StationCoords) <= 10.0F Then
+            If Bus.Position.DistanceTo(CurrentRoute.Stations(CurrentStationIndex).StationCoords) <= 15.0F Then
                 Dim b As Blip = BlipDict.Item(CurrentStationIndex)
                 BlipDict.Remove(CurrentStationIndex)
                 b.Remove()
@@ -650,9 +650,8 @@ Public Class BusSim
                 World.RenderingCamera = MenuCamera
             End If
         End If
-        'Catch ex As Exception
-        '    Logger.Log(String.Format("(BusSim_Tick): {0} {1}", ex.Message, ex.StackTrace))
-        'End Try
+
+        BusInteriorLights()
     End Sub
 
     Private Sub BusSim_Aborted(sender As Object, e As EventArgs) Handles Me.Aborted
@@ -769,12 +768,12 @@ Public Class BusSim
             EarnedTimerBar = New TextTimerBar(EARN, "$" & Earned.ToString("0"))
             Select Case Speedometer
                 Case SpeedMeasurement.KPH
-                    SpeedTimerBar = New TextTimerBar(SPEED_KPH, Bus.SpeedKPH.ToString("0"))
+                    SpeedTimerBar = New BarTimerBar(SPEED_KPH) With {.Percentage = 0F, .BackgroundColor = Color.DarkBlue, .ForegroundColor = Color.LightBlue}
                 Case Else
-                    SpeedTimerBar = New TextTimerBar(SPEED_MPH, Bus.SpeedMPH.ToString("0"))
+                    SpeedTimerBar = New BarTimerBar(SPEED_MPH) With {.Percentage = 0F, .BackgroundColor = Color.DarkSlateBlue, .ForegroundColor = Color.LightBlue}
             End Select
             NextStationTimerBar = New TextTimerBar(NEXT_STATION_TB, CurrentRoute.Stations(CurrentStationIndex).StationName)
-            StationTimerBar = New TextTimerBar(STATION, $"{CurrentStationIndex}/{CurrentRoute.TotalStation}")
+            StationTimerBar = New BarTimerBar(STATION) With {.Percentage = 0F, .BackgroundColor = Color.DarkGreen, .ForegroundColor = Color.LightGreen}
             _timerPool.Add(EarnedTimerBar)
             _timerPool.Add(SpeedTimerBar)
             _timerPool.Add(StationTimerBar)
@@ -794,28 +793,64 @@ Public Class BusSim
 
     Public Sub UpdateTimerBars()
         Try
-            _timerPool.Remove(EarnedTimerBar)
-            _timerPool.Remove(SpeedTimerBar)
-            _timerPool.Remove(NextStationTimerBar)
-            _timerPool.Remove(StationTimerBar)
-            EarnedTimerBar = New TextTimerBar(EARN, "$" & Earned.ToString("0"))
+            Dim res As SizeF = UIMenu.GetScreenResolutionMaintainRatio()
+            Dim safe As Point = UIMenu.GetSafezoneBounds()
+            Dim SNText As String = CurrentRoute.Stations(CurrentStationIndex).StationName
+            Dim SCText As String = $"{CurrentStationIndex}/{CurrentRoute.TotalStation}"
+            Dim SOText As String = ""
+
+            EarnedTimerBar.Text = "$" & Earned.ToString("0")
             Select Case Speedometer
                 Case SpeedMeasurement.KPH
-                    SpeedTimerBar = New TextTimerBar(SPEED_KPH, Bus.SpeedKPH.ToString("0"))
+                    SOText = Bus.SpeedKPH.ToString("0")
+                    Dim KmMax As Single = Bus.MaxSpeedKPH * 1.1
+                    If Bus.IsInAir Then SpeedTimerBar.Percentage = 1.0F Else SpeedTimerBar.Percentage = Val(Bus.SpeedKPH / KmMax)
                 Case Else
-                    SpeedTimerBar = New TextTimerBar(SPEED_MPH, Bus.SpeedMPH.ToString("0"))
+                    SOText = Bus.SpeedMPH.ToString("0")
+                    Dim MiMax As Single = Bus.MaxSpeedMPH * 1.1
+                    If Bus.IsInAir Then SpeedTimerBar.Percentage = 1.0F Else SpeedTimerBar.Percentage = Val(Bus.SpeedMPH / MiMax)
             End Select
-            NextStationTimerBar = New TextTimerBar(NEXT_STATION_TB, CurrentRoute.Stations(CurrentStationIndex).StationName)
-            StationTimerBar = New TextTimerBar(STATION, $"{CurrentStationIndex}/{CurrentRoute.TotalStation}")
-            _timerPool.Add(EarnedTimerBar)
-            _timerPool.Add(SpeedTimerBar)
-            _timerPool.Add(StationTimerBar)
-            _timerPool.Add(NextStationTimerBar)
+            NextStationTimerBar.Text = ""
+            UIResText.Draw(SNText, CInt(res.Width) - safe.X - 10, CInt(res.Height) - safe.Y - (42 + (4 * 30 - TextHeight(SNText))), GTA.Font.ChaletLondon, TextSize(SNText), Color.White, UIResText.Alignment.Right, False, False, 0)
+            Dim EachStationInterval As Single = 100 / CurrentRoute.TotalStation
+            StationTimerBar.Percentage = Val(EachStationInterval * CurrentStationIndex) / 100
+            UIResText.Draw(SCText, CInt(res.Width) - safe.X - (160 / 2), CInt(res.Height) - safe.Y - (42 + (4 * 20 - 10)), GTA.Font.ChaletLondon, 0.25F, Color.White, UIResText.Alignment.Centered, False, True, 0)
+            UIResText.Draw(SOText, CInt(res.Width) - safe.X - (160 / 2), CInt(res.Height) - safe.Y - (42 + (4 * 10 - 10)), GTA.Font.ChaletLondon, 0.25F, Color.White, UIResText.Alignment.Centered, False, True, 0)
             _timerPool.Draw()
         Catch ex As Exception
             Logger.Log(String.Format("(UpdateTimerBars): {0} {1}", ex.Message, ex.StackTrace))
         End Try
     End Sub
+
+    Private Function TextSize(__text As String) As Single
+        Dim result As Single = 0.5F
+        Select Case __text.Count
+            Case 1 To 10
+                result = 0.5F
+            Case 11 To 20
+                result = 0.35F
+            Case 21 To 30
+                result = 0.2F
+            Case 31 To 999999999
+                result = 0.05F
+        End Select
+        Return result
+    End Function
+
+    Private Function TextHeight(__text As String) As Integer
+        Dim result As Integer = 0
+        Select Case __text.Count
+            Case 1 To 10
+                result = 0
+            Case 11 To 20
+                result = 5
+            Case 21 To 30
+                result = 10
+            Case 31 To 999999999
+                result = 15
+        End Select
+        Return result
+    End Function
 
     Public Sub DrawDebugObjects()
         If DebugMode Then
@@ -834,7 +869,6 @@ Public Class BusSim
             Dim BusLayout As New UIResRectangle(New Point(((X - SZB.X) - 1), (((Convert.ToInt32(SRMR.Height) - SZB.Y) - Y) - 4)), New Size(42, 190), Color.FromArgb(200, 0, 0, 0)) : BusLayout.Draw()
             Dim BusNum As New UIResRectangle(New Point(BusLayout.Position.X + 1, BusLayout.Position.Y + 1), New Size(40, 25), Color.FromArgb(200, Color.Orange)) : BusNum.Draw()
             Dim busText As New UIResText(CurrentRoute.RouteNumber, New Point(BusNum.Position.X + (BusNum.Size.Width / 2), BusNum.Position.Y), 0.3F, Color.White, GTA.Font.ChaletLondon, UIResText.Alignment.Centered) : busText.Outline = True : busText.Draw()
-
             Dim SD As New UIResRectangle(New Point(BusNum.Position.X + 1, BusNum.Position.Y + BusNum.Size.Height + 2), New Size(18, 18), If(Bus.IsSeatFree(VehicleSeat.Driver), Color.FromArgb(200, Color.LightGreen), Color.FromArgb(200, Color.White))) : SD.Draw()
             Dim D As New UIResText("D", New Point(SD.Position.X + (SD.Size.Width / 2), SD.Position.Y), 0.2F, Color.Black, GTA.Font.ChaletLondon, UIResText.Alignment.Centered) : busText.Outline = True : D.Draw()
             If Bus.PassengerSeats >= 1 Then
@@ -1018,4 +1052,18 @@ Public Class BusSim
         If Not previewBus = Nothing Then previewBus.Delete()
     End Sub
 
+    Dim buses As New List(Of Vehicle)
+    Private Sub BusInteriorLights()
+        For Each bas In World.GetNearbyVehicles(Game.Player.Character, 50.0F)
+            If bas.IsBus Then
+                If Not buses.Contains(bas) Then buses.Add(bas)
+            End If
+        Next
+
+        For Each bas As Vehicle In buses
+            bas.TurnBusInteriorLightsOn
+        Next
+
+        If Game.Player.Character.LastVehicle.IsBus Then If Not buses.Contains(Game.Player.Character.LastVehicle) Then buses.Add(Game.Player.Character.LastVehicle)
+    End Sub
 End Class

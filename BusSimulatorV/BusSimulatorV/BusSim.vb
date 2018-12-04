@@ -659,6 +659,7 @@ Public Class BusSim
         Me.Dispose()
 
         If Not Bus = Nothing Then Bus.Delete()
+        If Not previewBus = Nothing Then previewBus.Delete()
         'If Not TextProp = Nothing Then TextProp.Delete()
 
         For Each blip As Blip In BlipList
@@ -696,7 +697,7 @@ Public Class BusSim
                 LeavedPassengerPedGroup.Clear()
                 LastStationPassengerPedGroup.Clear()
                 If Not Bus = Nothing Then Bus.Delete()
-                Bus = World.CreateVehicle(CurrentRoute.BusModel, CurrentRoute.BusSpawnPoint, CurrentRoute.BusHeading)
+                If Not previewBus = Nothing Then Bus = previewBus Else Bus = World.CreateVehicle(CurrentRoute.BusModel, CurrentRoute.BusSpawnPoint, CurrentRoute.BusHeading)
                 With Bus
                     .IsPersistent = True
                     .RemoveAllExtras()
@@ -1049,7 +1050,7 @@ Public Class BusSim
     Private Sub RouteMenu_OnMenuClose(sender As UIMenu) Handles RouteMenu.OnMenuClose
         RouteCamera.InterpTo(MenuCamera, 3000, True, True)
         World.RenderingCamera = MenuCamera
-        If Not previewBus = Nothing Then previewBus.Delete()
+        'If Not previewBus = Nothing Then previewBus.Delete()
     End Sub
 
     Dim buses As New List(Of Vehicle)

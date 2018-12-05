@@ -358,6 +358,13 @@ Module Helper
     End Sub
 
     <Extension()>
+    Public Sub TurnBusStopRequestLightOn(Bus As Vehicle)
+        If Bus.EngineRunning AndAlso Not Bus.IsDead Then
+            If Bus.HasBone("dashglow") Then World.DrawLightWithRange(Bus.GetBoneCoord("dashglow"), Color.Red, 0.575, 1.25)
+        End If
+    End Sub
+
+    <Extension()>
     Public Function GetBoneCoord2(entity As Entity, bone As String) As Vector3
         Dim bc As Vector3 = entity.GetBoneCoord(bone)
         Return New Vector3(bc.X, bc.Y, bc.Z - 0.5F)

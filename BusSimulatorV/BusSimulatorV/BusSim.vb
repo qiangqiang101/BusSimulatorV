@@ -42,7 +42,7 @@ Public Class BusSim
     Public Shared LeavedPassengerPedGroup As New List(Of Ped)
     Public Shared LastStationPassengerPedGroup As New List(Of Ped)
     Dim door, door1, door2, door3 As Boolean
-    Public TTS As Boolean, TTSVoice As Integer
+    Public TTS As Boolean, TTSVoice, TTSVolume, BellVolume As Integer
     Dim SAPI As Object
     Public FrontLeftDoorJ, FrontRightDoorJ, RearLeftDoorJ, RearRightDoorJ, ModifierJ As GTA.Control
     Public FrontLeftDoorK, FrontRightDoorK, RearLeftDoorK, RearRightDoork As Keys
@@ -50,6 +50,7 @@ Public Class BusSim
     Dim random As New Random()
     Dim leaveCount As Integer = 0
     Dim bellSounded As Boolean = False
+    Dim stopRequested As Boolean = False
     'Dim busScaleform As New Scaleform("ORGANISATION_NAME")
 
     'Translate Text
@@ -124,6 +125,8 @@ Public Class BusSim
             Brakelights = config.GetValue(Of Boolean)("GENERAL", "Brakelights", True)
             TTS = config.GetValue(Of Boolean)("GENERAL", "TTS", False)
             TTSVoice = config.GetValue(Of Integer)("GENERAL", "TTSVoice", 0)
+            TTSVolume = config.GetValue(Of Integer)("GENERAL", "TTSVolume", 50)
+            BellVolume = config.GetValue(Of Integer)("GENERAL", "BellVolume", 50)
             FrontLeftDoorJ = config.GetValue(Of GTA.Control)("JOYCONTROLS", "FrontLeftDoor", GTA.Control.ScriptPadLeft)
             FrontRightDoorJ = config.GetValue(Of GTA.Control)("JOYCONTROLS", "FrontRightDoor", GTA.Control.ScriptPadLeft)
             RearLeftDoorJ = config.GetValue(Of GTA.Control)("JOYCONTROLS", "RearLeftDoor", GTA.Control.ScriptPadRight)
@@ -148,6 +151,8 @@ Public Class BusSim
                 config.SetValue(Of Boolean)("GENERAL", "Brakelights", True)
                 config.SetValue(Of Boolean)("GENERAL", "TTS", False)
                 config.SetValue(Of Integer)("GENERAL", "TTSVoice", 0)
+                config.SetValue(Of Integer)("GENERAL", "TTSVolume", 50)
+                config.SetValue(Of Integer)("GENERAL", "BellVolume", 50)
                 config.SetValue(Of GTA.Control)("JOYCONTROLS", "FrontLeftDoor", GTA.Control.ScriptPadLeft)
                 config.SetValue(Of GTA.Control)("JOYCONTROLS", "FrontRightDoor", GTA.Control.ScriptPadLeft)
                 config.SetValue(Of GTA.Control)("JOYCONTROLS", "RearLeftDoor", GTA.Control.ScriptPadRight)
@@ -193,7 +198,7 @@ Public Class BusSim
         If TTS Then
             SAPI = CreateObject("SAPI.spvoice")
             SAPI.Voice = SAPI.GetVoices.Item(TTSVoice)
-            SAPI.Volume = 50
+            SAPI.Volume = TTSVolume
         End If
     End Sub
 
@@ -346,11 +351,17 @@ Public Class BusSim
         If RouteMenu.Visible Then
             If Game.IsControlJustReleased(0, GTA.Control.Reload) Then
                 RefreshRouteMenu()
+                itemRoute.SetRightLabel("")
             End If
         End If
 
         If IsInGame Then
             'busScaleform.DrawText(Bus)
+            If Not Bus.IsSeatFree(VehicleSeat.Driver) Then
+                If Not Bus.Driver = Game.Player.Character Then
+                    Bus.Driver.Task.LeaveVehicle(Bus, LeaveVehicleFlags.BailOut)
+                End If
+            End If
 
             If Game.Player.Character.IsInVehicle(Bus) Then
                 Select Case Difficult
@@ -409,10 +420,12 @@ Public Class BusSim
                 End If
 
                 If door Then
-                    If Not Bus.IsDoorOpen(VehicleDoor.BackLeftDoor) Then Bus.OpenDoor(VehicleDoor.BackLeftDoor, False, False)
-                    If Not Bus.IsDoorOpen(VehicleDoor.BackRightDoor) Then Bus.OpenDoor(VehicleDoor.BackRightDoor, False, False)
-                    If Not Bus.IsDoorOpen(VehicleDoor.FrontLeftDoor) Then Bus.OpenDoor(VehicleDoor.FrontLeftDoor, False, False)
-                    If Not Bus.IsDoorOpen(VehicleDoor.FrontRightDoor) Then Bus.OpenDoor(VehicleDoor.FrontRightDoor, False, False)
+                    If Bus.SpeedMPH = 0 Then
+                        If Not Bus.IsDoorOpen(VehicleDoor.BackLeftDoor) Then Bus.OpenDoor(VehicleDoor.BackLeftDoor, False, False)
+                        If Not Bus.IsDoorOpen(VehicleDoor.BackRightDoor) Then Bus.OpenDoor(VehicleDoor.BackRightDoor, False, False)
+                        If Not Bus.IsDoorOpen(VehicleDoor.FrontLeftDoor) Then Bus.OpenDoor(VehicleDoor.FrontLeftDoor, False, False)
+                        If Not Bus.IsDoorOpen(VehicleDoor.FrontRightDoor) Then Bus.OpenDoor(VehicleDoor.FrontRightDoor, False, False)
+                    End If
                 Else
                     If Bus.IsDoorOpen(VehicleDoor.BackLeftDoor) Then Bus.CloseDoor(VehicleDoor.BackLeftDoor, False)
                     If Bus.IsDoorOpen(VehicleDoor.BackRightDoor) Then Bus.CloseDoor(VehicleDoor.BackRightDoor, False)
@@ -511,19 +524,22 @@ Public Class BusSim
                 End Try
             End If
 
-            If Bus.Position.DistanceTo(CurrentRoute.Stations(CurrentStationIndex).StationCoords) <= 50.0F Then
+            If Bus.Position.DistanceTo(CurrentRoute.Stations(CurrentStationIndex).StationCoords) <= 80.0F Then
                 If Not bellSounded Then
                     leaveCount = random.Next(0, 3)
                     If Not Bus.IsSeatFree(VehicleSeat.Passenger) Then
-                        SoundPlayer("scripts\BusSimulatorV\Sound\bell.wav", 100)
+                        SoundPlayer("scripts\BusSimulatorV\Sound\bell.wav", BellVolume)
                         bellSounded = True
+                        stopRequested = True
                     Else
                         If PassengerPedGroup.Count <> 0 AndAlso leaveCount <> 0 Then
-                            SoundPlayer("scripts\BusSimulatorV\Sound\bell.wav", 100)
+                            SoundPlayer("scripts\BusSimulatorV\Sound\bell.wav", BellVolume)
                             bellSounded = True
+                            stopRequested = True
                         End If
                     End If
                 End If
+                If stopRequested Then Bus.TurnBusStopRequestLightOn
             End If
 
             If Bus.Position.DistanceTo(CurrentRoute.Stations(CurrentStationIndex).StationCoords) <= 15.0F Then
@@ -603,6 +619,7 @@ Public Class BusSim
                             PassengerPedGroup.Remove(ped)
                         End If
                     End If
+                    stopRequested = False
 
                     If Not PassengerPedGroup.Count >= Bus.PassengerSeats Then
                         Dim pedCount As Integer = 0, maxPed As Integer = 3
@@ -699,11 +716,14 @@ Public Class BusSim
                 If Not Bus = Nothing Then Bus.Delete()
                 If Not previewBus = Nothing Then Bus = previewBus Else Bus = World.CreateVehicle(CurrentRoute.BusModel, CurrentRoute.BusSpawnPoint, CurrentRoute.BusHeading)
                 With Bus
+                    .Position = CurrentRoute.BusSpawnPoint
+                    .Heading = CurrentRoute.BusHeading
                     .IsPersistent = True
                     .RemoveAllExtras()
                     If .ExtraExists(CurrentRoute.TurnOnExtra) Then .ToggleExtra(CurrentRoute.TurnOnExtra, True)
                     .PlaceOnGround()
                     .Repair()
+                    .Wash()
                 End With
                 'If Not TextProp = Nothing Then TextProp.Delete()
                 'TextProp = World.CreateProp("ex_prop_ex_office_text", Bus.GetBoneCoord("extra_1"), False, False)
@@ -748,7 +768,13 @@ Public Class BusSim
                 MenuCamera.InterpTo(RouteCamera, 3000, True, True)
                 World.RenderingCamera = RouteCamera
                 If Not RouteMenu.MenuItems.Count = 0 Then
-                    Dim br As BusRoute = New BusRoute(RouteMenu.MenuItems(0).SubString1)
+                    Dim sitem = RouteMenu.MenuItems.Find(Function(x) x.RightBadge = UIMenuItem.BadgeStyle.Tick)
+                    Dim br As BusRoute
+                    If Not sitem Is Nothing Then
+                        br = New BusRoute(sitem.SubString1)
+                    Else
+                        br = New BusRoute(RouteMenu.MenuItems(0).SubString1)
+                    End If
                     br = br.ReadFromFile
                     If Not previewBus = Nothing Then previewBus.Delete()
                     previewBus = World.CreateVehicle(br.BusModel, New Vector3(421.5408, -641.575, 27.4958), 180.1512)
@@ -756,6 +782,8 @@ Public Class BusSim
                         .RemoveAllExtras()
                         If .ExtraExists(br.TurnOnExtra) Then .ToggleExtra(br.TurnOnExtra, True)
                         .EngineRunning = True
+                        .Wash()
+                        .Repair()
                     End With
                 End If
             End If
@@ -1017,6 +1045,7 @@ Public Class BusSim
     End Sub
 
     Private Sub MainMenu_OnMenuClose(sender As UIMenu) Handles MainMenu.OnMenuClose
+        If Not previewBus = Nothing Then previewBus.Delete()
         MenuCamera.InterpTo(StartCamera, 3000, True, True)
         World.RenderingCamera = StartCamera
         Script.Wait(3000)

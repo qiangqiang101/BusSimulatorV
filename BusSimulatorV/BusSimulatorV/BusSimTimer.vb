@@ -12,22 +12,41 @@ Public Class BusSimTimer
     Private Sub FixPedEnterBus()
         On Error Resume Next
         If Not PassengerPedGroup.Count = 0 AndAlso Not Bus = Nothing Then
-            If Bus.IsAnyDoorOpen Then
+            If LeavedPassengerPedGroup.Count = 0 Then
+                If Bus.IsAnyDoorOpen Then
+                    For Each ped As Ped In PassengerPedGroup
+                        If Not ped.IsSittingInVehicle(Bus) AndAlso Not ped.IsRunning Then
+                            Select Case True
+                                Case Bus.IsVehicleFull, ped.IsPedTooFarAwayFrom(Bus)
+                                    ped.CurrentBlip.Remove()
+                                    PassengerPedGroup.Remove(ped)
+                                    Earned -= CurrentRoute.RouteFare
+                                    Return
+                            End Select
+                            If Not Bus.IsSeatFree(ped.Seat) Then
+                                If ped.Position.DistanceTo(Bus.GetBoneCoord("door_dside_f")) <= 5.0F Then
+                                    ped.Task.EnterVehicle(Bus, Bus.GetEmptySeat, 15000, 1.0, EnterBusFlag.None)
+                                Else
+                                    ped.Task.EnterVehicle(Bus, Bus.GetEmptySeat, 15000, 2.0, EnterBusFlag.None)
+                                End If
+                            Else
+                                If ped.Position.DistanceTo(Bus.GetBoneCoord("door_dside_f")) <= 5.0F Then
+                                    ped.Task.EnterVehicle(Bus, ped.Seat, 15000, 1.0, EnterBusFlag.None)
+                                Else
+                                    ped.Task.EnterVehicle(Bus, ped.Seat, 15000, 2.0, EnterBusFlag.None)
+                                End If
+                            End If
+                            ped.AlwaysKeepTask = True
+                            Script.Wait(500)
+                        End If
+                    Next
+                End If
+            Else
                 For Each ped As Ped In PassengerPedGroup
-                    If Not ped.IsSittingInVehicle(Bus) AndAlso Not ped.IsRunning Then
-                        Select Case True
-                            Case Bus.IsVehicleFull, ped.IsPedTooFarAwayFrom(Bus)
-                                ped.CurrentBlip.Remove()
-                                PassengerPedGroup.Remove(ped)
-                                Earned -= CurrentRoute.RouteFare
-                                Return
-                        End Select
-                        If Not Bus.IsSeatFree(ped.Seat) Then ped.Task.EnterVehicle(Bus, Bus.GetEmptySeat, 15000, 2.0, EnterBusFlag.None) Else ped.Task.EnterVehicle(Bus, ped.Seat, 15000, 2.0, EnterBusFlag.None)
-                        ped.AlwaysKeepTask = True
-                        Script.Wait(500)
-                    End If
+                    ped.Task.GoTo(Bus.GetBoneCoord("door_dside_f"))
                 Next
             End If
+
         End If
     End Sub
 
@@ -52,19 +71,6 @@ Public Class BusSimTimer
                 End If
             Next
         End If
-    End Sub
-
-    Private Sub BusSimTimer_Tick(sender As Object, e As EventArgs) Handles Me.Tick
-        FixPedEnterBus()
-        PedAutoShufferingSeat()
-    End Sub
-End Class
-
-Public Class BusSimTimer2
-    Inherits Script
-
-    Public Sub New()
-
     End Sub
 
     Private Sub FixPedLeaveBus()
@@ -124,8 +130,10 @@ Public Class BusSimTimer2
         End If
     End Sub
 
-    Private Sub BusSimTimer2_Tick(sender As Object, e As EventArgs) Handles Me.Tick
+    Private Sub BusSimTimer_Tick(sender As Object, e As EventArgs) Handles Me.Tick
         FixPedLeaveBus()
         AllPedLeaveBus()
+        FixPedEnterBus()
+        PedAutoShufferingSeat()
     End Sub
 End Class

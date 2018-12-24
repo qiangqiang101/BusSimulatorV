@@ -12,8 +12,8 @@ Imports System.Media
 Public Class BusSim
     Inherits Script
 
-    Public WithEvents MainMenu, RouteMenu, DifficultyMenu As UIMenu
-    Public itemMRoute, itemPlay, itemRoute, itemDifficulty As UIMenuItem
+    Public WithEvents MainMenu, RouteMenu, DifficultyMenu, LiveryMenu As UIMenu
+    Public itemMRoute, itemPlay, itemRoute, itemDifficulty, itemLivery As UIMenuItem
     Public itemNormal, itemHard, itemVeryHard, itemExtremelyHard As UIMenuItem
     Public Shared CurrentRoute As BusRoute
     Public _menuPool As MenuPool
@@ -48,15 +48,16 @@ Public Class BusSim
     Public FrontLeftDoorK, FrontRightDoorK, RearLeftDoorK, RearRightDoork As Keys
     Dim Difficult As Difficulty = Difficulty.Normal
     Dim random As New Random()
-    Dim leaveCount As Integer = 0
+    Dim leaveCount As Integer = 0, passengerCount = 0
     Dim bellSounded As Boolean = False
     Dim stopRequested As Boolean = False
-    'Dim busScaleform As New Scaleform("ORGANISATION_NAME")
+    Dim pedSpawned As Boolean = False
+    Dim SelectedLivery As Integer = 0
 
     'Translate Text
     Dim bus_depot, author, version, description, final_station, passenger, next_station, help_text
     'Translate Menu
-    Dim MAIN_MENU, ROUTE_SELECTION, DIFFICULTY_LEVEL_SELECTION
+    Dim MAIN_MENU, ROUTE_SELECTION, DIFFICULTY_LEVEL_SELECTION As String, LIVERY_SELECTION = "LIVERY SELECTION"
     'Translate MenuItem
     Dim select_route, select_route_desc, difficulty_level, difficulty_level_desc, start_mission, start_mission_desc, normal, hard, very_hard, extremely_hard, normal_desc, hard_desc, very_hard_desc, extremely_hard_desc, stop_mission
     'Translate Button
@@ -181,6 +182,7 @@ Public Class BusSim
         CreateMainMenu()
         CreateRouteMenu()
         CreateDifficultyMenu()
+        CreateLiveryMenu()
 
         CameraPos = New Vector3(427.3593, -670.04, 29.90757)
         CameraRot = New Vector3(2.562092, 0, -16.7178)
@@ -210,6 +212,7 @@ Public Class BusSim
             _menuPool.Add(MainMenu)
             itemRoute = New UIMenuItem(select_route, String.Format(select_route_desc, Directory.GetFiles("scripts\BusSimulatorV\Route", "*.xml").Count)) : MainMenu.AddItem(itemRoute)
             itemDifficulty = New UIMenuItem(difficulty_level, difficulty_level_desc) : itemDifficulty.SetRightLabel(normal) : MainMenu.AddItem(itemDifficulty)
+            itemLivery = New UIMenuItem(Game.GetGXTEntry("CMM_MOD_S23"), Game.GetGXTEntry("CMOD_SMOD_6_D")) : itemLivery.Enabled = False : MainMenu.AddItem(itemLivery)
             itemPlay = New UIMenuItem(start_mission, start_mission_desc) With {.Enabled = False} : MainMenu.AddItem(itemPlay)
             If Not IsDLCInstalled() Then
                 Dim itemWarning As New UIMenuColoredItem("Bus Simulator V DLC not detect!", "Bus Simulator V DLC isn't Install, did you forgot add <Item>dlcpacks:/bussim/</Item> in your dlclist.xml? The Bus Stop won't spawn and Bus LED Sign won't work without it.", Color.DarkRed, Color.PaleVioletRed)
@@ -329,6 +332,82 @@ Public Class BusSim
         End Try
     End Sub
 
+    Public Sub CreateLiveryMenu()
+        Try
+            LiveryMenu = New UIMenu("", LIVERY_SELECTION, New Point(0, -107))
+            LiveryMenu.SetBannerType(Rectangle)
+            LiveryMenu.MouseEdgeEnabled = False
+            _menuPool.Add(LiveryMenu)
+            LiveryMenu.AddItem(New UIMenuItem("Nothing"))
+            LiveryMenu.RefreshIndex()
+            MainMenu.BindMenuToItem(LiveryMenu, itemLivery)
+        Catch ex As Exception
+            Logger.Log(String.Format("(CreateLiveryMenu): {0} {1}", ex.Message, ex.StackTrace))
+        End Try
+    End Sub
+
+    Public Sub RefreshLiveryMenu()
+        Try
+            If Not previewBus = Nothing Then
+                itemLivery.Enabled = True
+                LiveryMenu.Subtitle.Caption = Game.GetGXTEntry("CMM_MOD_ST23")
+                LiveryMenu.MenuItems.Clear()
+
+                For l As Integer = 0 To previewBus.Livery2Count - 1
+                    Dim item As New UIMenuItem($"{Game.GetGXTEntry("CMM_MOD_S23")} {l + 1}")
+                    With item
+                        .SubInteger1 = l
+                        If previewBus.GetLivery2 = l Then .SetRightBadge(UIMenuItem.BadgeStyle.Car)
+                    End With
+                    LiveryMenu.AddItem(item)
+                Next
+                LiveryMenu.RefreshIndex()
+                MainMenu.BindMenuToItem(LiveryMenu, itemLivery)
+            Else
+                LiveryMenu.Subtitle.Caption = Game.GetGXTEntry("CMM_MOD_ST23")
+            End If
+        Catch ex As Exception
+            Logger.Log(String.Format("(RefreshLiveryMenu): {0} {1}", ex.Message, ex.StackTrace))
+        End Try
+    End Sub
+
+    Private Sub LiveryMenu_OnItemSelect(sender As UIMenu, selectedItem As UIMenuItem, index As Integer) Handles LiveryMenu.OnItemSelect
+        Try
+            If Not previewBus = Nothing Then
+                For Each item As UIMenuItem In sender.MenuItems
+                    item.SetRightBadge(UIMenuItem.BadgeStyle.None)
+                Next
+                selectedItem.SetRightBadge(UIMenuItem.BadgeStyle.Car)
+                SelectedLivery = selectedItem.SubInteger1
+                sender.GoBack()
+            End If
+        Catch ex As Exception
+            Logger.Log(String.Format("(LiveryMenu_OnItemSelect): {0} {1}", ex.Message, ex.StackTrace))
+        End Try
+    End Sub
+
+    Private Sub LiveryMenu_OnIndexChange(sender As UIMenu, newIndex As Integer) Handles LiveryMenu.OnIndexChange
+        Try
+            If Not previewBus = Nothing Then
+                previewBus.SetLivery2(sender.MenuItems(newIndex).SubInteger1)
+            End If
+        Catch ex As Exception
+            Logger.Log(String.Format("(LiveryMenu_OnIndexChange): {0} {1}", ex.Message, ex.StackTrace))
+        End Try
+    End Sub
+
+    Private Sub LiveryMenu_OnMenuClose(sender As UIMenu) Handles LiveryMenu.OnMenuClose
+        Try
+            If Not previewBus = Nothing Then
+                previewBus.SetLivery2(SelectedLivery)
+            End If
+            RouteCamera.InterpTo(MenuCamera, 3000, True, True)
+            World.RenderingCamera = MenuCamera
+        Catch ex As Exception
+            Logger.Log(String.Format("(LiveryMenu_OnMenuClose): {0} {1}", ex.Message, ex.StackTrace))
+        End Try
+    End Sub
+
     Private Sub BusSim_Tick(sender As Object, e As EventArgs) Handles Me.Tick
         _menuPool.ProcessMenus()
 
@@ -419,6 +498,8 @@ Public Class BusSim
                     door = True
                 End If
 
+
+
                 If door Then
                     If Bus.SpeedMPH = 0 Then
                         If Not Bus.IsDoorOpen(VehicleDoor.BackLeftDoor) Then Bus.OpenDoor(VehicleDoor.BackLeftDoor, False, False)
@@ -427,8 +508,8 @@ Public Class BusSim
                         If Not Bus.IsDoorOpen(VehicleDoor.FrontRightDoor) Then Bus.OpenDoor(VehicleDoor.FrontRightDoor, False, False)
                     End If
                 Else
-                    If Bus.IsDoorOpen(VehicleDoor.BackLeftDoor) Then Bus.CloseDoor(VehicleDoor.BackLeftDoor, False)
-                    If Bus.IsDoorOpen(VehicleDoor.BackRightDoor) Then Bus.CloseDoor(VehicleDoor.BackRightDoor, False)
+                    If Not Bus.IsDoorOpen(VehicleDoor.FrontLeftDoor) Then Bus.CloseDoor(VehicleDoor.BackLeftDoor, False)
+                    If Not Bus.IsDoorOpen(VehicleDoor.FrontRightDoor) Then Bus.CloseDoor(VehicleDoor.BackRightDoor, False)
                     If Bus.IsDoorOpen(VehicleDoor.FrontLeftDoor) Then Bus.CloseDoor(VehicleDoor.FrontLeftDoor, False)
                     If Bus.IsDoorOpen(VehicleDoor.FrontRightDoor) Then Bus.CloseDoor(VehicleDoor.FrontRightDoor, False)
                 End If
@@ -525,13 +606,51 @@ Public Class BusSim
             End If
 
             If Bus.Position.DistanceTo(CurrentRoute.Stations(CurrentStationIndex).StationCoords) <= 80.0F Then
+                If Not (CurrentStationIndex = CurrentRoute.TotalStation) Then
+                    If Not pedSpawned Then
+                        passengerCount = random.Next(0, 5)
+                        Select Case passengerCount
+                            Case 0
+                                Dim p = CreateRandomPed(CurrentRoute.Stations(CurrentStationIndex).StationCoords) : p.Task.Wait(15000)
+                                pedSpawned = True
+                            Case 1
+                                Dim p = CreateRandomPed(CurrentRoute.Stations(CurrentStationIndex).StationCoords) : p.Task.Wait(15000)
+                                p = CreateRandomPed(CurrentRoute.Stations(CurrentStationIndex).StationCoords) : p.Task.Wait(15000)
+                                pedSpawned = True
+                            Case 2
+                                Dim p = CreateRandomPed(CurrentRoute.Stations(CurrentStationIndex).StationCoords) : p.Task.Wait(15000)
+                                p = CreateRandomPed(CurrentRoute.Stations(CurrentStationIndex).StationCoords) : p.Task.Wait(15000)
+                                p = CreateRandomPed(CurrentRoute.Stations(CurrentStationIndex).StationCoords) : p.Task.Wait(15000)
+                                pedSpawned = True
+                            Case 3
+                                Dim p = CreateRandomPed(CurrentRoute.Stations(CurrentStationIndex).StationCoords) : p.Task.Wait(15000)
+                                p = CreateRandomPed(CurrentRoute.Stations(CurrentStationIndex).StationCoords) : p.Task.Wait(15000)
+                                p = CreateRandomPed(CurrentRoute.Stations(CurrentStationIndex).StationCoords) : p.Task.Wait(15000)
+                                p = CreateRandomPed(CurrentRoute.Stations(CurrentStationIndex).StationCoords) : p.Task.Wait(15000)
+                                pedSpawned = True
+                            Case 4
+                                Dim p = CreateRandomPed(CurrentRoute.Stations(CurrentStationIndex).StationCoords) : p.Task.Wait(15000)
+                                p = CreateRandomPed(CurrentRoute.Stations(CurrentStationIndex).StationCoords) : p.Task.Wait(15000)
+                                p = CreateRandomPed(CurrentRoute.Stations(CurrentStationIndex).StationCoords) : p.Task.Wait(15000)
+                                p = CreateRandomPed(CurrentRoute.Stations(CurrentStationIndex).StationCoords) : p.Task.Wait(15000)
+                                p = CreateRandomPed(CurrentRoute.Stations(CurrentStationIndex).StationCoords) : p.Task.Wait(15000)
+                                pedSpawned = True
+                        End Select
+                    End If
+                Else
+                    pedSpawned = True
+                End If
+            End If
+
+            If Bus.Position.DistanceTo(CurrentRoute.Stations(CurrentStationIndex).StationCoords) <= 80.0F Then
                 If Not bellSounded Then
-                    leaveCount = random.Next(0, 3)
+                    leaveCount = random.Next(0, 4)
                     If Not Bus.IsSeatFree(VehicleSeat.Passenger) Then
                         SoundPlayer("scripts\BusSimulatorV\Sound\bell.wav", BellVolume)
                         bellSounded = True
                         stopRequested = True
                     Else
+                        If PassengerPedGroup.Count <= CInt(System.Math.Round(Bus.PassengerSeats / 2)) Then If Not leaveCount = 0 Then leaveCount = random.Next(0, 2)
                         If PassengerPedGroup.Count <> 0 AndAlso leaveCount <> 0 Then
                             SoundPlayer("scripts\BusSimulatorV\Sound\bell.wav", BellVolume)
                             bellSounded = True
@@ -542,11 +661,12 @@ Public Class BusSim
                 If stopRequested Then Bus.TurnBusStopRequestLightOn
             End If
 
-            If Bus.Position.DistanceTo(CurrentRoute.Stations(CurrentStationIndex).StationCoords) <= 15.0F Then
+            If Bus.Position.DistanceTo(CurrentRoute.Stations(CurrentStationIndex).StationCoords) <= 10.0F Then
                 Dim b As Blip = BlipDict.Item(CurrentStationIndex)
                 BlipDict.Remove(CurrentStationIndex)
                 b.Remove()
                 bellSounded = False
+                pedSpawned = False
 
                 If Not CurrentStationIndex = CurrentRoute.TotalStation Then CurrentStationIndex += 1
 
@@ -586,6 +706,7 @@ Public Class BusSim
                     Earned = 0
 
                     Bus.RemoveAllExtras
+                    Bus.Livery = 0
                     Bus.OpenDoor(VehicleDoor.FrontLeftDoor, False, False)
                     Bus.OpenDoor(VehicleDoor.FrontRightDoor, False, False)
                     Bus.OpenDoor(VehicleDoor.BackLeftDoor, False, False)
@@ -624,7 +745,7 @@ Public Class BusSim
                     If Not PassengerPedGroup.Count >= Bus.PassengerSeats Then
                         Dim pedCount As Integer = 0, maxPed As Integer = 3
                         For Each ped As Ped In World.GetNearbyPeds(CurrentRoute.Stations(CurrentStationIndex - 1).StationCoords, 20.0F)
-                            If pedCount < maxPed AndAlso Not ped = Game.Player.Character AndAlso ped.IsHuman AndAlso Not ped.IsInVehicle() AndAlso Not ped.IsProne AndAlso Not ped.IsHooker AndAlso Not World.CalculateTravelDistance(Bus.Position, ped.Position) >= 20.0F Then
+                            If pedCount < maxPed AndAlso Not ped = Game.Player.Character AndAlso ped.IsHuman AndAlso Not ped.IsInVehicle() AndAlso Not ped.IsHooker AndAlso Not World.CalculateTravelDistance(CurrentRoute.Stations(CurrentStationIndex - 1).StationCoords, ped.Position) >= 20.0F Then
                                 If Not PassengerPedGroup.Contains(ped) Then
                                     ped.StopPedFlee
                                     ped.RelationshipGroup = PedRelationshipGroup
@@ -720,7 +841,8 @@ Public Class BusSim
                     .Heading = CurrentRoute.BusHeading
                     .IsPersistent = True
                     .RemoveAllExtras()
-                    If .ExtraExists(CurrentRoute.TurnOnExtra) Then .ToggleExtra(CurrentRoute.TurnOnExtra, True)
+                    'If .ExtraExists(CurrentRoute.TurnOnExtra) Then .ToggleExtra(CurrentRoute.TurnOnExtra, True)
+                    .Livery = CurrentRoute.TurnOnExtra
                     .PlaceOnGround()
                     .Repair()
                     .Wash()
@@ -780,12 +902,19 @@ Public Class BusSim
                     previewBus = World.CreateVehicle(br.BusModel, New Vector3(421.5408, -641.575, 27.4958), 180.1512)
                     With previewBus
                         .RemoveAllExtras()
-                        If .ExtraExists(br.TurnOnExtra) Then .ToggleExtra(br.TurnOnExtra, True)
+                        'If .ExtraExists(br.TurnOnExtra) Then .ToggleExtra(br.TurnOnExtra, True)
+                        .Livery = br.TurnOnExtra
+                        SelectedLivery = .GetLivery2
                         .EngineRunning = True
                         .Wash()
                         .Repair()
+                        RefreshLiveryMenu()
                     End With
                 End If
+            ElseIf selectedItem.Text = itemLivery.Text Then
+                RouteCamera = World.CreateCamera(RouteCameraPos, RouteCameraRot, GameplayCamera.FieldOfView)
+                MenuCamera.InterpTo(RouteCamera, 3000, True, True)
+                World.RenderingCamera = RouteCamera
             End If
         Catch ex As Exception
             Logger.Log(String.Format("(MainMenu_OnItemSelect): {0} {1}", ex.Message, ex.StackTrace))
@@ -1071,8 +1200,11 @@ Public Class BusSim
         previewBus = World.CreateVehicle(br.BusModel, New Vector3(421.5408, -641.575, 27.4958), 180.1512)
         With previewBus
             .RemoveAllExtras()
-            If .ExtraExists(br.TurnOnExtra) Then .ToggleExtra(br.TurnOnExtra, True)
+            'If .ExtraExists(br.TurnOnExtra) Then .ToggleExtra(br.TurnOnExtra, True)
+            SelectedLivery = .GetLivery2
+            .Livery = br.TurnOnExtra
             .EngineRunning = True
+            RefreshLiveryMenu()
         End With
     End Sub
 

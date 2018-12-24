@@ -15,7 +15,7 @@ Public Class BusSimTimer
             If LeavedPassengerPedGroup.Count = 0 Then
                 If Bus.IsAnyDoorOpen Then
                     For Each ped As Ped In PassengerPedGroup
-                        If Not ped.IsSittingInVehicle(Bus) AndAlso Not ped.IsRunning Then
+                        If Not ped.IsInVehicle(Bus) AndAlso Not ped.IsRunning Then
                             Select Case True
                                 Case Bus.IsVehicleFull, ped.IsPedTooFarAwayFrom(Bus)
                                     ped.CurrentBlip.Remove()
@@ -24,13 +24,13 @@ Public Class BusSimTimer
                                     Return
                             End Select
                             If Not Bus.IsSeatFree(ped.Seat) Then
-                                If ped.Position.DistanceTo(Bus.GetBoneCoord("door_dside_f")) <= 5.0F Then
+                                If ped.Position.DistanceTo(Bus.GetBoneCoord("door_dside_f")) <= 8.0F Then
                                     ped.Task.EnterVehicle(Bus, Bus.GetEmptySeat, 15000, 1.0, EnterBusFlag.None)
                                 Else
                                     ped.Task.EnterVehicle(Bus, Bus.GetEmptySeat, 15000, 2.0, EnterBusFlag.None)
                                 End If
                             Else
-                                If ped.Position.DistanceTo(Bus.GetBoneCoord("door_dside_f")) <= 5.0F Then
+                                If ped.Position.DistanceTo(Bus.GetBoneCoord("door_dside_f")) <= 8.0F Then
                                     ped.Task.EnterVehicle(Bus, ped.Seat, 15000, 1.0, EnterBusFlag.None)
                                 Else
                                     ped.Task.EnterVehicle(Bus, ped.Seat, 15000, 2.0, EnterBusFlag.None)
@@ -43,10 +43,9 @@ Public Class BusSimTimer
                 End If
             Else
                 For Each ped As Ped In PassengerPedGroup
-                    ped.Task.GoTo(Bus.GetBoneCoord("door_dside_f"))
+                    If Not ped.IsInVehicle Then ped.Task.GoTo(Bus.GetBoneCoord("door_dside_f"))
                 Next
             End If
-
         End If
     End Sub
 
@@ -84,11 +83,15 @@ Public Class BusSimTimer
                     Else
                         Select Case ped.SeatIndex
                             Case VehicleSeat.ExtraSeat2, VehicleSeat.ExtraSeat3, VehicleSeat.ExtraSeat4, VehicleSeat.ExtraSeat5, VehicleSeat.ExtraSeat6, VehicleSeat.ExtraSeat7, VehicleSeat.ExtraSeat8, VehicleSeat.ExtraSeat9, VehicleSeat.ExtraSeat10, VehicleSeat.ExtraSeat11, VehicleSeat.ExtraSeat12, VehicleSeat.ExtraSeat1
+                                ped.IsVisible = False
                                 ped.Task.WarpIntoVehicle(Bus, VehicleSeat.Passenger)
                                 Script.Wait(500)
                             Case VehicleSeat.Passenger, VehicleSeat.LeftRear, VehicleSeat.RightRear
                                 ped.Task.LeaveVehicle(Bus, False)
-                                Script.Wait(500)
+                                ped.IsVisible = True
+                                Script.Wait(100)
+                                If Bus.HasBone("extra_2") AndAlso Bus.HasBone("seat_pside_r2") Then ped.PositionNoOffset = Bus.GetBoneCoord("extra_2")
+                                Script.Wait(600)
                         End Select
                     End If
                     ped.RelationshipGroup = 0
@@ -108,20 +111,27 @@ Public Class BusSimTimer
                     Else
                         Select Case ped.SeatIndex
                             Case VehicleSeat.ExtraSeat2, VehicleSeat.ExtraSeat3, VehicleSeat.ExtraSeat4
+                                ped.IsVisible = False
                                 ped.Task.WarpIntoVehicle(Bus, VehicleSeat.Passenger)
                                 Script.Wait(500)
                             Case VehicleSeat.ExtraSeat5, VehicleSeat.ExtraSeat6, VehicleSeat.ExtraSeat7
+                                ped.IsVisible = False
                                 ped.Task.WarpIntoVehicle(Bus, VehicleSeat.ExtraSeat1)
                                 Script.Wait(500)
                             Case VehicleSeat.ExtraSeat8, VehicleSeat.ExtraSeat9, VehicleSeat.ExtraSeat10
+                                ped.IsVisible = False
                                 ped.Task.WarpIntoVehicle(Bus, VehicleSeat.LeftRear)
                                 Script.Wait(500)
                             Case VehicleSeat.ExtraSeat11, VehicleSeat.ExtraSeat12
+                                ped.IsVisible = False
                                 ped.Task.WarpIntoVehicle(Bus, VehicleSeat.RightRear)
                                 Script.Wait(500)
                             Case VehicleSeat.Passenger, VehicleSeat.ExtraSeat1, VehicleSeat.LeftRear, VehicleSeat.RightRear
                                 ped.Task.LeaveVehicle(Bus, False)
-                                Script.Wait(500)
+                                ped.IsVisible = True
+                                Script.Wait(100)
+                                If Bus.HasBone("extra_2") AndAlso Bus.HasBone("seat_pside_r2") Then ped.PositionNoOffset = Bus.GetBoneCoord("extra_2")
+                                Script.Wait(600)
                         End Select
                     End If
                     ped.RelationshipGroup = 0

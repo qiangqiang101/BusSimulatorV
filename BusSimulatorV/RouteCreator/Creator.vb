@@ -157,7 +157,7 @@ Public Class Creator
             itemRBSpawn = New UIMenuColoredItem("Bus Position", "Position for Bus Spawn Point.", Color.CadetBlue, Color.DodgerBlue) : CreatorMenu.AddItem(itemRBSpawn)
             itemRBHead = New UIMenuItem("Bus Heading", "Heading of the Bus when spawn.") : CreatorMenu.AddItem(itemRBHead)
             itemRBModel = New UIMenuItem("Bus Model", "Model name of the vehicle use in this Route.") : CreatorMenu.AddItem(itemRBModel)
-            itemRExtra = New UIMenuItem("Turn On Extra", "Which Extra Component to turn on in this Route.") : CreatorMenu.AddItem(itemRExtra)
+            itemRExtra = New UIMenuItem("Sign Livery", "Which Sign Livery to use in this Route.") : CreatorMenu.AddItem(itemRExtra)
             itemRFare = New UIMenuItem("Fare", "How much money to earn per passenger.") : CreatorMenu.AddItem(itemRFare)
             itemRStations = New UIMenuColoredItem("Stations", "List of the Station for this Route.", Color.CadetBlue, Color.DodgerBlue) : CreatorMenu.AddItem(itemRStations)
             CreatorMenu.RefreshIndex()

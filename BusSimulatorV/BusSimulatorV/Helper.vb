@@ -102,12 +102,9 @@ Module Helper
     End Function
 
     Public Sub DisplayHelpTextThisFrame(ByVal [text] As String)
-        Dim arguments As InputArgument() = New InputArgument() {"STRING"}
-        Native.Function.Call(Hash._0x8509B634FBE7DA11, arguments)
-        Dim argumentArray2 As InputArgument() = New InputArgument() {[text]}
-        Native.Function.Call(Hash._0x6C188BE134E074AA, argumentArray2)
-        Dim argumentArray3 As InputArgument() = New InputArgument() {0, 0, 1, -1}
-        Native.Function.Call(Hash._0x238FFE5C7B0498A6, argumentArray3)
+        Native.Function.Call(Hash._0x8509B634FBE7DA11, "STRING")
+        Native.Function.Call(Hash._0x6C188BE134E074AA, [text])
+        Native.Function.Call(Hash._0x238FFE5C7B0498A6, 0, 0, 1, -1)
     End Sub
 
     Public Enum SpeedMeasurement
@@ -333,34 +330,38 @@ Module Helper
 
     <Extension()>
     Public Sub TurnBusInteriorLightsOn(bus As Vehicle)
-        Dim random As New Random
-        Dim b1, b2, b3, b4 As Integer
-        b1 = random.Next(0, 500)
-        b2 = random.Next(0, 500)
-        b3 = random.Next(0, 500)
-        b4 = random.Next(0, 500)
-        If bus.EngineRunning AndAlso Not bus.IsDead Then
-            If bus.LightsOn Then
-                If bus.HasBone("misc_w") AndAlso bus.HasBone("misc_x") AndAlso bus.HasBone("misc_y") AndAlso bus.HasBone("misc_z") Then
-                    If bus.HasBone("misc_w") AndAlso Not b1 = 1 Then World.DrawLightWithRange(bus.GetBoneCoord2("misc_w"), Color.White, 2.3, 5.0)
-                    If bus.HasBone("misc_x") AndAlso Not b2 = 1 Then World.DrawLightWithRange(bus.GetBoneCoord2("misc_x"), Color.White, 2.3, 5.0)
-                    If bus.HasBone("misc_y") AndAlso Not b3 = 1 Then World.DrawLightWithRange(bus.GetBoneCoord2("misc_y"), Color.White, 2.3, 5.0)
-                    If bus.HasBone("misc_z") AndAlso Not b4 = 1 Then World.DrawLightWithRange(bus.GetBoneCoord2("misc_z"), Color.White, 2.3, 5.0)
-                ElseIf bus.HasBone("misc_g") AndAlso bus.HasBone("misc_h") AndAlso bus.HasBone("misc_i") AndAlso bus.HasBone("misc_j") Then
-                    If bus.HasBone("misc_g") AndAlso Not b1 = 1 Then World.DrawLightWithRange(bus.GetBoneCoord2("misc_g"), Color.White, 2.3, 5.0)
-                    If bus.HasBone("misc_h") AndAlso Not b2 = 1 Then World.DrawLightWithRange(bus.GetBoneCoord2("misc_h"), Color.White, 2.3, 5.0)
-                    If bus.HasBone("misc_i") AndAlso Not b3 = 1 Then World.DrawLightWithRange(bus.GetBoneCoord2("misc_i"), Color.White, 2.3, 5.0)
-                    If bus.HasBone("misc_j") AndAlso Not b4 = 1 Then World.DrawLightWithRange(bus.GetBoneCoord2("misc_j"), Color.White, 2.3, 5.0)
+        If IsDLCInstalled() Then
+            Dim random As New Random
+            Dim b1, b2, b3, b4 As Integer
+            b1 = random.Next(0, 500)
+            b2 = random.Next(0, 500)
+            b3 = random.Next(0, 500)
+            b4 = random.Next(0, 500)
+            If bus.EngineRunning AndAlso Not bus.IsDead Then
+                If bus.LightsOn Then
+                    If bus.HasBone("misc_w") AndAlso bus.HasBone("misc_x") AndAlso bus.HasBone("misc_y") AndAlso bus.HasBone("misc_z") Then
+                        If bus.HasBone("misc_w") AndAlso Not b1 = 1 Then World.DrawLightWithRange(bus.GetBoneCoord2("misc_w"), Color.White, 2.3, 5.0)
+                        If bus.HasBone("misc_x") AndAlso Not b2 = 1 Then World.DrawLightWithRange(bus.GetBoneCoord2("misc_x"), Color.White, 2.3, 5.0)
+                        If bus.HasBone("misc_y") AndAlso Not b3 = 1 Then World.DrawLightWithRange(bus.GetBoneCoord2("misc_y"), Color.White, 2.3, 5.0)
+                        If bus.HasBone("misc_z") AndAlso Not b4 = 1 Then World.DrawLightWithRange(bus.GetBoneCoord2("misc_z"), Color.White, 2.3, 5.0)
+                    ElseIf bus.HasBone("misc_g") AndAlso bus.HasBone("misc_h") AndAlso bus.HasBone("misc_i") AndAlso bus.HasBone("misc_j") Then
+                        If bus.HasBone("misc_g") AndAlso Not b1 = 1 Then World.DrawLightWithRange(bus.GetBoneCoord2("misc_g"), Color.White, 2.3, 5.0)
+                        If bus.HasBone("misc_h") AndAlso Not b2 = 1 Then World.DrawLightWithRange(bus.GetBoneCoord2("misc_h"), Color.White, 2.3, 5.0)
+                        If bus.HasBone("misc_i") AndAlso Not b3 = 1 Then World.DrawLightWithRange(bus.GetBoneCoord2("misc_i"), Color.White, 2.3, 5.0)
+                        If bus.HasBone("misc_j") AndAlso Not b4 = 1 Then World.DrawLightWithRange(bus.GetBoneCoord2("misc_j"), Color.White, 2.3, 5.0)
+                    End If
+                    bus.InteriorLightOn = True
                 End If
-                bus.InteriorLightOn = True
             End If
         End If
     End Sub
 
     <Extension()>
     Public Sub TurnBusStopRequestLightOn(Bus As Vehicle)
-        If Bus.EngineRunning AndAlso Not Bus.IsDead Then
-            If Bus.HasBone("dashglow") Then World.DrawLightWithRange(Bus.GetBoneCoord("dashglow"), Color.Red, 0.575, 1.25)
+        If IsDLCInstalled() Then
+            If Bus.EngineRunning AndAlso Not Bus.IsDead Then
+                If Bus.HasBone("extra_1") Then World.DrawLightWithRange(Bus.GetBoneCoord("extra_1"), Color.Red, 1.15F, 2.5)
+            End If
         End If
     End Sub
 
@@ -433,6 +434,11 @@ Module Helper
     Public Sub StartScenarioInPlace(ped As Ped, scenario As String, playEnterAnim As Boolean)
         Native.Function.Call(Hash.TASK_START_SCENARIO_IN_PLACE, ped.Handle, scenario, -1, playEnterAnim)
     End Sub
+
+    <Extension()>
+    Public Function IsPedUsingScenario(ped As Ped) As Boolean
+        Return Native.Function.Call(Of Boolean)(Hash.IS_PED_USING_ANY_SCENARIO, ped.Handle)
+    End Function
 
     Dim hooker As New List(Of Model) From {PedHash.Hooker01SFY, PedHash.Hooker02SFY, PedHash.Hooker03SFY, PedHash.DeadHooker}
     <Extension()>
@@ -527,6 +533,41 @@ Module Helper
 
     Public Function IsDLCInstalled() As Boolean
         Return Native.Function.Call(Of Boolean)(Hash.IS_DLC_PRESENT, "bussim".GetHashKey)
+    End Function
+
+    Public Function CreateRandomPed(position As Vector3) As Ped
+        Dim result As Ped = World.CreateRandomPed(position.GetSidewalkPosition)
+        result.MarkAsNoLongerNeeded()
+        result.IsPersistent = False
+        Return result
+    End Function
+
+    <Extension()>
+    Public Function GetSidewalkPosition(position As Vector3) As Vector3
+        Dim arg As New OutputArgument()
+        Native.Function.Call(Of Boolean)(Hash.GET_SAFE_COORD_FOR_PED, position.X, position.Y, position.Z, True, arg, 16)
+        Dim result As New Vector3(arg.GetResult(Of Vector3)().X, arg.GetResult(Of Vector3)().Y, arg.GetResult(Of Vector3)().Z - 1.0F)
+        Return result
+    End Function
+
+    <Extension()>
+    Public Sub SetDoorAngle(Vehicle As Vehicle, Door As VehicleDoor, Angle As Single)
+        Native.Function.Call(Hash.SET_VEHICLE_DOOR_CONTROL, Vehicle.Handle, Door, 1, Angle)
+    End Sub
+
+    <Extension()>
+    Public Sub SetLivery2(veh As Vehicle, liv As Integer)
+        Native.Function.Call(DirectCast(&HA6D3A8750DC73270UL, Hash), veh.Handle, liv)
+    End Sub
+
+    <Extension()>
+    Public Function GetLivery2(veh As Vehicle) As Integer
+        Return Native.Function.Call(Of Integer)(DirectCast(&H60190048C0764A26UL, Hash), veh.Handle)
+    End Function
+
+    <Extension()>
+    Public Function Livery2Count(veh As Vehicle) As Integer
+        Return Native.Function.Call(Of Integer)(DirectCast(&H5ECB40269053C0D4UL, Hash), veh.Handle)
     End Function
 End Module
 

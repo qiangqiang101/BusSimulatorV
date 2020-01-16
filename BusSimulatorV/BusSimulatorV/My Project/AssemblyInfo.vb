@@ -12,7 +12,7 @@ Imports System.Runtime.InteropServices
 <Assembly: AssemblyDescription("")>
 <Assembly: AssemblyCompany("Zettabyte Technology")>
 <Assembly: AssemblyProduct("Bus Simulator V")>
-<Assembly: AssemblyCopyright("Copyright © 2018 Zettabyte Technology")>
+<Assembly: AssemblyCopyright("Copyright © 2018 - 2020 Zettabyte Technology")>
 <Assembly: AssemblyTrademark("")> 
 
 <Assembly: ComVisible(False)>
@@ -31,5 +31,5 @@ Imports System.Runtime.InteropServices
 ' by using the '*' as shown below:
 ' <Assembly: AssemblyVersion("1.0.*")> 
 
-<Assembly: AssemblyVersion("1.1.1225.2")>
-<Assembly: AssemblyFileVersion("1.1.1225.2")>
+<Assembly: AssemblyVersion("1.2.117.0")>
+<Assembly: AssemblyFileVersion("1.2.117.0")>

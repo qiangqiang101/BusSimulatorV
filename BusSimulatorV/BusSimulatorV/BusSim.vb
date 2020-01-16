@@ -59,7 +59,7 @@ Public Class BusSim
     'Translate Menu
     Dim MAIN_MENU, ROUTE_SELECTION, DIFFICULTY_LEVEL_SELECTION As String, LIVERY_SELECTION = "LIVERY SELECTION"
     'Translate MenuItem
-    Dim select_route, select_route_desc, difficulty_level, difficulty_level_desc, start_mission, start_mission_desc, normal, hard, very_hard, extremely_hard, normal_desc, hard_desc, very_hard_desc, extremely_hard_desc, stop_mission
+    Dim select_route, select_route_desc, difficulty_level, difficulty_level_desc, start_mission, start_mission_desc, normal, hard, very_hard, extremely_hard, normal_desc, hard_desc, very_hard_desc, extremely_hard_desc, stop_mission As String
     'Translate Button
     Dim refresh
     'Translate Big Message
@@ -228,12 +228,18 @@ Public Class BusSim
         End Try
     End Sub
 
+    Public Sub RefreshMainMenu()
+        RequestAdditionTextFile("mod_mnu")
+        itemLivery.Text = Game.GetGXTEntry("CMM_MOD_S23")
+        itemLivery.Description = Game.GetGXTEntry("CMOD_SMOD_6_D")
+    End Sub
+
     Public Sub CreateRouteMenu()
         Try
             RouteMenu = New UIMenu("", ROUTE_SELECTION, New Point(0, -107))
             RouteMenu.SetBannerType(Rectangle)
             RouteMenu.MouseEdgeEnabled = False
-            RouteMenu.AddInstructionalButton(New InstructionalButton(GTA.Control.Reload, refresh))
+            RouteMenu.AddInstructionalButton(New InstructionalButton(If(Game.CurrentInputMode = InputMode.GamePad, GTA.Control.AccurateAim, GTA.Control.Reload), refresh))
             _menuPool.Add(RouteMenu)
 
             For Each xmlFile As String In Directory.GetFiles("scripts\BusSimulatorV\Route", "*.xml")
@@ -242,15 +248,19 @@ Public Class BusSim
                     br = br.ReadFromFile
                     itemMRoute = New UIMenuItem(br.RouteName)
                     With itemMRoute
-                        .SubString1 = xmlFile
-                        .SubInteger1 = br.RouteNumber
+                        '.SubString1 = xmlFile
+                        '.SubInteger1 = br.RouteNumber
+                        .SubString = {xmlFile}
+                        .SubInteger = {br.RouteNumber}
+                        .Tag = br
                         .Description = $"{author}: {br.Author}~n~{version}: {br.Version}~n~{description}: {br.Description}                                                                                                                                                                                                                                    "
                     End With
                     RouteMenu.AddItem(itemMRoute)
                 End If
             Next
             RouteMenu.RefreshIndex()
-            RouteMenu.MenuItems = RouteMenu.MenuItems.OrderBy(Function(x) x.SubInteger1).ToList
+            'RouteMenu.MenuItems = RouteMenu.MenuItems.OrderBy(Function(x) x.SubInteger1).ToList
+            RouteMenu.MenuItems = RouteMenu.MenuItems.OrderBy(Function(x) x.SubInteger(0)).ToList
             MainMenu.BindMenuToItem(RouteMenu, itemRoute)
         Catch ex As Exception
             Logger.Log(String.Format("(CreateRouteMenu): {0} {1}", ex.Message, ex.StackTrace))
@@ -267,15 +277,19 @@ Public Class BusSim
                     br = br.ReadFromFile
                     itemMRoute = New UIMenuItem(br.RouteName)
                     With itemMRoute
-                        .SubString1 = xmlFile
-                        .SubInteger1 = br.RouteNumber
+                        '.SubString1 = xmlFile
+                        '.SubInteger1 = br.RouteNumber
+                        .SubString = {xmlFile}
+                        .SubInteger = {br.RouteNumber}
+                        .Tag = br
                         .Description = $"{author}: {br.Author}~n~{version}: {br.Version}~n~{description}: {br.Description}                                                                                                                                                                                                                                    "
                     End With
                     RouteMenu.AddItem(itemMRoute)
                 End If
             Next
             RouteMenu.RefreshIndex()
-            RouteMenu.MenuItems = RouteMenu.MenuItems.OrderBy(Function(x) x.SubInteger1).ToList
+            'RouteMenu.MenuItems = RouteMenu.MenuItems.OrderBy(Function(x) x.SubInteger1).ToList
+            RouteMenu.MenuItems = RouteMenu.MenuItems.OrderBy(Function(x) x.SubInteger(0)).ToList
             MainMenu.BindMenuToItem(RouteMenu, itemRoute)
         Catch ex As Exception
             Logger.Log(String.Format("(RefreshRouteMenu): {0} {1}", ex.Message, ex.StackTrace))
@@ -284,12 +298,14 @@ Public Class BusSim
 
     Private Sub RouteMenu_OnItemSelect(sender As UIMenu, selectedItem As UIMenuItem, index As Integer) Handles RouteMenu.OnItemSelect
         Try
-            Dim br As BusRoute = New BusRoute(selectedItem.SubString1)
-            br = br.ReadFromFile
-            CurrentRoute = br
+            'Dim br As BusRoute = New BusRoute(selectedItem.SubString1)
+            'br = br.ReadFromFile
+            'CurrentRoute = br
+            CurrentRoute = selectedItem.Tag
 
             itemPlay.Enabled = True
-            itemRoute.SetRightLabel(selectedItem.SubInteger1)
+            'itemRoute.SetRightLabel(selectedItem.SubInteger1)
+            itemRoute.SetRightLabel(selectedItem.SubInteger(0))
             For Each item As UIMenuItem In sender.MenuItems
                 item.SetRightBadge(UIMenuItem.BadgeStyle.None)
             Next
@@ -306,22 +322,49 @@ Public Class BusSim
             DifficultyMenu.SetBannerType(Rectangle)
             DifficultyMenu.MouseEdgeEnabled = False
             _menuPool.Add(DifficultyMenu)
-            itemNormal = New UIMenuItem($"~g~{normal}", normal_desc) With {.SubString1 = normal, .SubInteger1 = Difficulty.Normal} : DifficultyMenu.AddItem(itemNormal)
-            itemHard = New UIMenuItem($"~y~{hard}", hard_desc) With {.SubString1 = hard, .SubInteger1 = Difficulty.Hard} : DifficultyMenu.AddItem(itemHard)
-            itemVeryHard = New UIMenuItem($"~o~{very_hard}", very_hard_desc) With {.SubString1 = very_hard, .SubInteger1 = Difficulty.VeryHard} : DifficultyMenu.AddItem(itemVeryHard)
-            itemExtremelyHard = New UIMenuItem($"~r~{extremely_hard}", extremely_hard_desc) With {.SubString1 = extremely_hard, .SubInteger1 = Difficulty.ExtremelyHard} : DifficultyMenu.AddItem(itemExtremelyHard)
+            'itemNormal = New UIMenuItem($"~g~{normal}", normal_desc) With {.SubString1 = normal, .SubInteger1 = Difficulty.Normal} : DifficultyMenu.AddItem(itemNormal)
+            itemNormal = New UIMenuItem($"~g~{normal}", normal_desc)
+            With itemNormal
+                .SubString = {normal}
+                .SubInteger = {Difficulty.Normal}
+            End With
+            DifficultyMenu.AddItem(itemNormal)
+            'itemHard = New UIMenuItem($"~y~{hard}", hard_desc) With {.SubString1 = hard, .SubInteger1 = Difficulty.Hard} : DifficultyMenu.AddItem(itemHard)
+            itemHard = New UIMenuItem($"~y~{hard}", hard_desc)
+            With itemHard
+                .SubString = {hard}
+                .SubInteger = {Difficulty.Hard}
+            End With
+            DifficultyMenu.AddItem(itemHard)
+            'itemVeryHard = New UIMenuItem($"~o~{very_hard}", very_hard_desc) With {.SubString1 = very_hard, .SubInteger1 = Difficulty.VeryHard} : DifficultyMenu.AddItem(itemVeryHard)
+            itemVeryHard = New UIMenuItem($"~o~{very_hard}", very_hard_desc)
+            With itemVeryHard
+                .SubString = {very_hard}
+                .SubInteger = {Difficulty.VeryHard}
+            End With
+            DifficultyMenu.AddItem(itemVeryHard)
+            'itemExtremelyHard = New UIMenuItem($"~r~{extremely_hard}", extremely_hard_desc) With {.SubString1 = extremely_hard, .SubInteger1 = Difficulty.ExtremelyHard} : DifficultyMenu.AddItem(itemExtremelyHard)
+            itemExtremelyHard = New UIMenuItem($"~r~{extremely_hard}", extremely_hard_desc)
+            With itemExtremelyHard
+                .SubString = {extremely_hard}
+                .SubInteger = {Difficulty.ExtremelyHard}
+            End With
+            DifficultyMenu.AddItem(itemExtremelyHard)
             DifficultyMenu.RefreshIndex()
             MainMenu.BindMenuToItem(DifficultyMenu, itemDifficulty)
         Catch ex As Exception
-            Logger.Log(String.Format("(CreateMainMenu): {0} {1}", ex.Message, ex.StackTrace))
+            Logger.Log(String.Format("(CreateDifficultyMenu): {0} {1}", ex.Message, ex.StackTrace))
         End Try
     End Sub
 
     Private Sub DifficultyMenu_OnItemSelect(sender As UIMenu, selectedItem As UIMenuItem, index As Integer) Handles DifficultyMenu.OnItemSelect
         Try
-            Difficult = selectedItem.SubInteger1
+            'Difficult = selectedItem.SubInteger1
 
-            itemDifficulty.SetRightLabel(selectedItem.SubString1)
+            'itemDifficulty.SetRightLabel(selectedItem.SubString1)
+            Difficult = selectedItem.SubInteger(0)
+
+            itemDifficulty.SetRightLabel(selectedItem.SubString(0))
             For Each item As UIMenuItem In sender.MenuItems
                 item.SetRightBadge(UIMenuItem.BadgeStyle.None)
             Next
@@ -349,6 +392,7 @@ Public Class BusSim
     Public Sub RefreshLiveryMenu()
         Try
             If Not previewBus = Nothing Then
+                RequestAdditionTextFile("mod_mnu")
                 itemLivery.Enabled = True
                 LiveryMenu.Subtitle.Caption = Game.GetGXTEntry("CMM_MOD_ST23")
                 LiveryMenu.MenuItems.Clear()
@@ -356,7 +400,8 @@ Public Class BusSim
                 For l As Integer = 0 To previewBus.Livery2Count - 1
                     Dim item As New UIMenuItem($"{Game.GetGXTEntry("CMM_MOD_S23")} {l + 1}")
                     With item
-                        .SubInteger1 = l
+                        '.SubInteger1 = l
+                        .SubInteger = {l}
                         If previewBus.GetLivery2 = l Then .SetRightBadge(UIMenuItem.BadgeStyle.Car)
                     End With
                     LiveryMenu.AddItem(item)
@@ -378,7 +423,8 @@ Public Class BusSim
                     item.SetRightBadge(UIMenuItem.BadgeStyle.None)
                 Next
                 selectedItem.SetRightBadge(UIMenuItem.BadgeStyle.Car)
-                SelectedLivery = selectedItem.SubInteger1
+                'SelectedLivery = selectedItem.SubInteger1
+                SelectedLivery = selectedItem.SubInteger(0)
                 sender.GoBack()
             End If
         Catch ex As Exception
@@ -389,7 +435,8 @@ Public Class BusSim
     Private Sub LiveryMenu_OnIndexChange(sender As UIMenu, newIndex As Integer) Handles LiveryMenu.OnIndexChange
         Try
             If Not previewBus = Nothing Then
-                previewBus.SetLivery2(sender.MenuItems(newIndex).SubInteger1)
+                'previewBus.SetLivery2(sender.MenuItems(newIndex).SubInteger1)
+                previewBus.SetLivery2(sender.MenuItems(newIndex).SubInteger(0))
             End If
         Catch ex As Exception
             Logger.Log(String.Format("(LiveryMenu_OnIndexChange): {0} {1}", ex.Message, ex.StackTrace))
@@ -428,10 +475,18 @@ Public Class BusSim
         End If
 
         If RouteMenu.Visible Then
-            If Game.IsControlJustReleased(0, GTA.Control.Reload) Then
-                RefreshRouteMenu()
-                itemRoute.SetRightLabel("")
+            If Game.CurrentInputMode = InputMode.MouseAndKeyboard Then
+                If Game.IsControlJustReleased(0, GTA.Control.Reload) Then
+                    RefreshRouteMenu()
+                    itemRoute.SetRightLabel("")
+                End If
+            Else
+                If Game.IsControlJustReleased(0, GTA.Control.AccurateAim) Then
+                    RefreshRouteMenu()
+                    itemRoute.SetRightLabel("")
+                End If
             End If
+
         End If
 
         If IsInGame Then
@@ -780,6 +835,7 @@ Public Class BusSim
                 DisplayHelpTextThisFrame(help_text)
             End If
             If Game.IsControlJustReleased(0, GTA.Control.Context) Then
+                RefreshMainMenu()
                 MainMenu.Show()
                 StartCamera = World.CreateCamera(GameplayCamera.Position, GameplayCamera.Rotation, GameplayCamera.FieldOfView)
                 World.RenderingCamera = StartCamera
@@ -893,9 +949,11 @@ Public Class BusSim
                     Dim sitem = RouteMenu.MenuItems.Find(Function(x) x.RightBadge = UIMenuItem.BadgeStyle.Tick)
                     Dim br As BusRoute
                     If Not sitem Is Nothing Then
-                        br = New BusRoute(sitem.SubString1)
+                        'br = New BusRoute(sitem.SubString1)
+                        br = sitem.Tag
                     Else
-                        br = New BusRoute(RouteMenu.MenuItems(0).SubString1)
+                        'br = New BusRoute(RouteMenu.MenuItems(0).SubString1)
+                        br = RouteMenu.MenuItems(0).Tag
                     End If
                     br = br.ReadFromFile
                     If Not previewBus = Nothing Then previewBus.Delete()
@@ -1194,8 +1252,9 @@ Public Class BusSim
     End Sub
 
     Private Sub RouteMenu_OnIndexChange(sender As UIMenu, newIndex As Integer) Handles RouteMenu.OnIndexChange
-        Dim br As BusRoute = New BusRoute(sender.MenuItems(newIndex).SubString1)
-        br = br.ReadFromFile
+        'Dim br As BusRoute = New BusRoute(sender.MenuItems(newIndex).SubString1)
+        'br = br.ReadFromFile
+        Dim br As BusRoute = sender.MenuItems(newIndex).Tag
         If Not previewBus = Nothing Then previewBus.Delete()
         previewBus = World.CreateVehicle(br.BusModel, New Vector3(421.5408, -641.575, 27.4958), 180.1512)
         With previewBus

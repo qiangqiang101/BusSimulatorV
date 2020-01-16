@@ -286,7 +286,11 @@ Module Helper
         Dim f4, f5, f6 As New OutputArgument()
         Native.Function.Call(Hash.GENERATE_DIRECTIONS_TO_COORD, pos.X, pos.Y, pos.Z, True, f4, f5, f6)
         Dim direction As String = f4.GetResult(Of Single)()
-        Return CInt(direction.Substring(0, 1))
+        Try
+            Return CInt(direction.Substring(0, 1))
+        Catch ex As Exception
+            Return 0
+        End Try
     End Function
 
     <Extension()>
@@ -568,6 +572,24 @@ Module Helper
     <Extension()>
     Public Function Livery2Count(veh As Vehicle) As Integer
         Return Native.Function.Call(Of Integer)(DirectCast(&H5ECB40269053C0D4UL, Hash), veh.Handle)
+    End Function
+
+    Public Function RequestAdditionTextFile(ByVal gxt2name As String, ByVal Optional timeout As Integer = 1000) As Boolean
+        If Not Native.Function.Call(Of Boolean)(Hash.HAS_THIS_ADDITIONAL_TEXT_LOADED, gxt2name, 9) Then
+            Native.Function.Call(Hash.CLEAR_ADDITIONAL_TEXT, 9, True)
+            Native.Function.Call(Hash.REQUEST_ADDITIONAL_TEXT, gxt2name, 9)
+            Dim [end] As Integer = Game.GameTime + timeout
+
+            If True Then
+                While Game.GameTime < [end]
+                    If Native.Function.Call(Of Boolean)(Hash.HAS_THIS_ADDITIONAL_TEXT_LOADED, gxt2name, 9) Then Return True
+                    Script.Yield()
+                End While
+                Return False
+            End If
+        End If
+
+        Return True
     End Function
 End Module
 
